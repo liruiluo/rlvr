@@ -13,6 +13,8 @@ This directory contains a small runner (`grpo_train_local.py`) that trains an LM
 bash scripts/rgym/rl/moe_lora/reasoning_gym_grpo_chain_sum_single_gpu_moe_lora_sphere_hf.sh
 ```
 
+Token-level MoE-LoRA + SPHERE requires HF rollout (we keep `external/verl` unmodified).
+
 Plain LoRA (no MoE, no SPHERE):
 
 ```bash
@@ -53,3 +55,17 @@ bash scripts/rgym/rl/moe_lora/reasoning_gym_grpo_chain_sum_single_gpu_moe_lora_s
 ```
 
 Models/datasets are cached under `./.cache/` by default via `scripts/common/setup_env.sh` (override with `RLVR_CACHE_ROOT=/path`).
+
+## 4-GPU / cluster
+
+Single node with 4 GPUs:
+
+```bash
+bash scripts/rgym/rl/moe_lora/reasoning_gym_grpo_chain_sum_single_gpu_moe_lora_sphere_hf.sh trainer.n_gpus_per_node=4
+```
+
+Existing Ray cluster:
+
+```bash
+bash scripts/rgym/cluster/rl/moe_lora/reasoning_gym_grpo_chain_sum_moe_lora_sphere_hf.sh ray.address=auto trainer.n_gpus_per_node=4
+```

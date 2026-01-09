@@ -32,6 +32,16 @@ def enable_moe_lora_sphere(model: nn.Module, enabled: bool) -> None:
             module.sphere_enabled = bool(enabled)
 
 
+def set_moe_lora_sphere_token_mask_flat(model: nn.Module, token_mask_flat: Optional[torch.Tensor]) -> None:
+    for module in model.modules():
+        if isinstance(module, MoELoRALinear):
+            module.sphere_token_mask_flat = token_mask_flat
+
+
+def clear_moe_lora_sphere_token_mask(model: nn.Module) -> None:
+    set_moe_lora_sphere_token_mask_flat(model, None)
+
+
 def clear_moe_lora_sphere_losses(model: nn.Module) -> None:
     for module in model.modules():
         if isinstance(module, MoELoRALinear):
@@ -88,6 +98,7 @@ class MoELoRALinear(PeftLoraLinear):
     moe: Optional[MoELoRAConfig] = None
     sphere_target: bool = False
     sphere_enabled: bool = False
+    sphere_token_mask_flat: Optional[torch.Tensor] = None
     sphere_feature_loss: Optional[torch.Tensor] = None
     sphere_gating_loss: Optional[torch.Tensor] = None
 
@@ -184,12 +195,21 @@ class MoELoRALinear(PeftLoraLinear):
 
         if collect_sphere:
             probs_2d = gate_probs.reshape(-1, gate_probs.shape[-1])
-            self.sphere_gating_loss = _parseval_output_loss(probs_2d)
-
             assert sphere_features is not None
             phi = torch.cat(sphere_features, dim=-1)
             phi_2d = phi.reshape(-1, phi.shape[-1])
-            self.sphere_feature_loss = _parseval_feature_loss_sphere(phi_2d)
+            token_mask = self.sphere_token_mask_flat
+            if token_mask is not None:
+                token_mask = token_mask.to(device=phi_2d.device, dtype=torch.bool)
+                probs_2d = probs_2d[token_mask]
+                phi_2d = phi_2d[token_mask]
+
+            if probs_2d.numel() == 0 or phi_2d.numel() == 0:
+                self.sphere_gating_loss = gate_probs.new_tensor(0.0)
+                self.sphere_feature_loss = gate_probs.new_tensor(0.0)
+            else:
+                self.sphere_gating_loss = _parseval_output_loss(probs_2d)
+                self.sphere_feature_loss = _parseval_feature_loss_sphere(phi_2d)
 
         return result.to(result_dtype)
 
@@ -231,3 +251,4 @@ def convert_peft_lora_to_moe(
 
     print(f"[MoE-LoRA/PEFT] Converted {len(converted_modules)} LoRA Linear layers to `MoELoRALinear`.")
     return peft_model
+

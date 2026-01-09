@@ -43,4 +43,18 @@ bash scripts/rgym/crl/lora/reasoning_gym_continual_single_gpu_lora_hf.sh crl.seq
 bash scripts/rgym/rl/moe_lora/reasoning_gym_grpo_chain_sum_single_gpu_moe_lora_sphere_hf.sh trainer.logger=[console,wandb]
 ```
 
+## 4-GPU / cluster
+
+If you run on a single node with 4 GPUs (local Ray on that node):
+
+```bash
+bash scripts/rgym/rl/moe_lora/reasoning_gym_grpo_chain_sum_single_gpu_moe_lora_sphere_hf.sh trainer.n_gpus_per_node=4
+```
+
+If you run on an existing Ray cluster, use the cluster scripts and pass `ray.address=auto` (or a concrete address):
+
+```bash
+bash scripts/rgym/cluster/rl/moe_lora/reasoning_gym_grpo_chain_sum_moe_lora_sphere_hf.sh ray.address=auto trainer.n_gpus_per_node=4
+```
+
 See `experiments/verl_rgym/README.md` for more runnable examples and curriculum scripts.

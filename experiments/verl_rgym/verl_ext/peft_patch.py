@@ -10,7 +10,7 @@ def patch_verl_get_peft_model_for_moe_lora(verl_ext_cfg: dict[str, Any]):
         return
 
     num_experts = int(verl_ext_cfg["moe_num_experts"])
-    top_k = int(verl_ext_cfg["moe_top_k"])
+    top_k = int(verl_ext_cfg.get("moe_top_k", 2))
     sphere_target = str(verl_ext_cfg.get("sphere_target", "last"))
 
     from verl_ext.moe_lora import convert_peft_lora_to_moe

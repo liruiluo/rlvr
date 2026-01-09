@@ -116,6 +116,7 @@ actor_rollout_ref:
         sphere_feature_ratio: 0.05
         sphere_gating_ratio: 0.0
         sphere_eps: 1e-8
+        sphere_mode: loss_ratio
         sphere_target: last
     val_kwargs:
       temperature: 0.0
@@ -155,3 +156,12 @@ crl:
   tasks: []
   steps_per_phase: 16
   replay_weight: 0.0
+  save_ckpt_at_phase_end: true
+  eval_at_phase_end: true
+  dump_eval_samples_at_phase_end: true
+  phase_task: null
+  phase_index: null
+
+ray:
+  address: local
+  include_dashboard: false

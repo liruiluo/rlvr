@@ -1,5 +1,6 @@
 from typing import Any, Optional
 
+import torch
 from verl import DataProto
 from verl.trainer.ppo.core_algos import agg_loss, get_policy_loss_fn, kl_penalty
 from verl.utils.device import get_device_id
@@ -7,7 +8,13 @@ from verl.utils.py_functional import append_to_dict
 from verl.utils.seqlen_balancing import prepare_dynamic_batch
 from verl.workers.actor.dp_actor import DataParallelPPOActor
 
-from verl_ext.moe_lora import clear_moe_lora_sphere_losses, enable_moe_lora_sphere, pop_moe_lora_sphere_losses
+from verl_ext.moe_lora import (
+    clear_moe_lora_sphere_losses,
+    clear_moe_lora_sphere_token_mask,
+    enable_moe_lora_sphere,
+    pop_moe_lora_sphere_losses,
+    set_moe_lora_sphere_token_mask_flat,
+)
 
 
 class SphereDataParallelPPOActor(DataParallelPPOActor):
@@ -24,6 +31,7 @@ class SphereDataParallelPPOActor(DataParallelPPOActor):
         sphere_feature_ratio = float(self._verl_ext_config.get("sphere_feature_ratio", 0.0))
         sphere_gating_ratio = float(self._verl_ext_config.get("sphere_gating_ratio", 0.0))
         sphere_eps = float(self._verl_ext_config.get("sphere_eps", 1e-8))
+        sphere_mode = str(self._verl_ext_config.get("sphere_mode", "loss_ratio"))
         sphere_enabled = (sphere_feature_ratio > 0.0) or (sphere_gating_ratio > 0.0)
 
         select_keys = [
@@ -91,6 +99,20 @@ class SphereDataParallelPPOActor(DataParallelPPOActor):
                     if sphere_enabled:
                         enable_moe_lora_sphere(self.actor_module, True)
                         clear_moe_lora_sphere_losses(self.actor_module)
+                        input_ids = model_inputs["input_ids"]
+                        batch_size, seqlen = input_ids.shape
+                        response_length = model_inputs["responses"].size(-1)
+                        start = seqlen - response_length - 1
+                        end = seqlen - 1
+                        token_mask = input_ids.new_zeros((batch_size, seqlen), dtype=torch.bool)
+                        token_mask[:, start:end] = response_mask.to(torch.bool)
+                        if self.use_remove_padding:
+                            attn = model_inputs["attention_mask"]
+                            indices = torch.nonzero(attn.reshape(-1), as_tuple=False).squeeze(-1)
+                            token_mask_flat = token_mask.reshape(-1).index_select(0, indices)
+                        else:
+                            token_mask_flat = token_mask.reshape(-1)
+                        set_moe_lora_sphere_token_mask_flat(self.actor_module, token_mask_flat)
 
                     outputs = self._forward_micro_batch(
                         model_inputs, temperature=temperature, calculate_entropy=calculate_entropy
@@ -155,18 +177,28 @@ class SphereDataParallelPPOActor(DataParallelPPOActor):
                         sphere_feature_losses, sphere_gating_losses = pop_moe_lora_sphere_losses(self.actor_module)
                         if sphere_feature_ratio > 0.0:
                             sphere_feat_loss = sphere_feature_losses[-1]
-                            sphere_feat_scale = (
-                                sphere_feature_ratio * base_policy_loss.detach().abs() / (sphere_feat_loss.detach() + sphere_eps)
-                            ).detach()
+                            if sphere_mode == "fixed":
+                                sphere_feat_scale = base_policy_loss.new_tensor(sphere_feature_ratio)
+                            else:
+                                sphere_feat_scale = (
+                                    sphere_feature_ratio
+                                    * base_policy_loss.detach().abs()
+                                    / (sphere_feat_loss.detach() + sphere_eps)
+                                ).detach()
                             policy_loss = policy_loss + sphere_feat_scale * sphere_feat_loss
                             micro_batch_metrics["actor/sphere_feature_loss"] = sphere_feat_loss.detach().item()
                             micro_batch_metrics["actor/sphere_feature_scale"] = sphere_feat_scale.item()
 
                         if sphere_gating_ratio > 0.0:
                             sphere_gate_loss = sphere_gating_losses[-1]
-                            sphere_gate_scale = (
-                                sphere_gating_ratio * base_policy_loss.detach().abs() / (sphere_gate_loss.detach() + sphere_eps)
-                            ).detach()
+                            if sphere_mode == "fixed":
+                                sphere_gate_scale = base_policy_loss.new_tensor(sphere_gating_ratio)
+                            else:
+                                sphere_gate_scale = (
+                                    sphere_gating_ratio
+                                    * base_policy_loss.detach().abs()
+                                    / (sphere_gate_loss.detach() + sphere_eps)
+                                ).detach()
                             policy_loss = policy_loss + sphere_gate_scale * sphere_gate_loss
                             micro_batch_metrics["actor/sphere_gating_loss"] = sphere_gate_loss.detach().item()
                             micro_batch_metrics["actor/sphere_gating_scale"] = sphere_gate_scale.item()
@@ -180,6 +212,7 @@ class SphereDataParallelPPOActor(DataParallelPPOActor):
                     if sphere_enabled:
                         enable_moe_lora_sphere(self.actor_module, False)
                         clear_moe_lora_sphere_losses(self.actor_module)
+                        clear_moe_lora_sphere_token_mask(self.actor_module)
 
                     metrics["actor/pg_loss"] += pg_loss.detach().item() * loss_scale_factor
                     append_to_dict(metrics, micro_batch_metrics)

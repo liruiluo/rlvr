@@ -3,6 +3,7 @@
 import os
 import re
 import sys
+import json
 from pathlib import Path
 from typing import Optional
 
@@ -26,6 +27,12 @@ from reasoning_gym.coaching.experiment import Experiment
 from reasoning_gym.composite import DatasetSpec
 from reasoning_gym.dataset import ProceduralDataset
 from reasoning_gym.utils import extract_answer
+
+
+def _json_default(obj):
+    if hasattr(obj, "item"):
+        return obj.item()
+    return str(obj)
 
 
 class ReasoningGymDataset(Dataset):
@@ -390,11 +397,45 @@ def main_task(config):
     trainer.init_workers()
     trainer.fit()
 
+    if bool(OmegaConf.select(config, "crl.enabled")) and bool(OmegaConf.select(config, "crl.eval_at_phase_end")):
+        phase_task = str(OmegaConf.select(config, "crl.phase_task") or "unknown")
+        print(f"[CRL] final eval task={phase_task} global_step={trainer.global_steps}")
 
-def _init_local_ray() -> None:
+        ckpt_root = _resolve_ckpt_root(config)
+        dump_samples = bool(OmegaConf.select(config, "crl.dump_eval_samples_at_phase_end"))
+        original_val_dir = OmegaConf.select(config, "trainer.validation_data_dir")
+        eval_dir = ckpt_root / "crl_eval" / phase_task / f"global_step_{trainer.global_steps}"
+        eval_dir.mkdir(parents=True, exist_ok=True)
+        if dump_samples:
+            with open_dict(config):
+                config.trainer.validation_data_dir = str(eval_dir / "generations")
+
+        metrics = trainer._validate()
+        print(f"[CRL] final eval metrics: {metrics}")
+
+        (eval_dir / "metrics.json").write_text(
+            json.dumps(
+                {"task": phase_task, "global_step": int(trainer.global_steps), "metrics": metrics},
+                ensure_ascii=False,
+                indent=2,
+                default=_json_default,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        with open_dict(config):
+            config.trainer.validation_data_dir = original_val_dir
+
+    if bool(OmegaConf.select(config, "crl.enabled")) and bool(OmegaConf.select(config, "crl.save_ckpt_at_phase_end")):
+        print(f"[CRL] saving checkpoint global_step={trainer.global_steps}")
+        trainer._save_checkpoint()
+
+
+def _init_ray(address: str, include_dashboard: bool) -> None:
     ray.init(
-        address="local",
-        include_dashboard=False,
+        address=address,
+        include_dashboard=include_dashboard,
         runtime_env={
             "env_vars": {
                 "TOKENIZERS_PARALLELISM": os.environ.get("TOKENIZERS_PARALLELISM", "true"),
@@ -417,15 +458,20 @@ def run_continual_learning(config) -> None:
         raise ValueError("crl.steps_per_phase must be > 0")
 
     replay_weight = float(OmegaConf.select(config, "crl.replay_weight") or 0.0)
+    ray_address = str(OmegaConf.select(config, "ray.address") or "local")
+    ray_dashboard = bool(OmegaConf.select(config, "ray.include_dashboard") or False)
 
     for idx, task in enumerate(tasks):
         if ray.is_initialized():
             ray.shutdown()
-        _init_local_ray()
+        _init_ray(address=ray_address, include_dashboard=ray_dashboard)
 
         phase_cfg = OmegaConf.create(OmegaConf.to_container(config, resolve=False))
         task_override = _load_rgym_task_override(task)
         phase_cfg = OmegaConf.merge(phase_cfg, task_override)
+        with open_dict(phase_cfg):
+            phase_cfg.crl.phase_task = str(task)
+            phase_cfg.crl.phase_index = int(idx)
 
         ckpt_root = _resolve_ckpt_root(phase_cfg)
         if replay_weight > 0 and idx > 0:
@@ -457,7 +503,9 @@ def main(config):
         run_continual_learning(config)
     else:
         if not ray.is_initialized():
-            _init_local_ray()
+            ray_address = str(OmegaConf.select(config, "ray.address") or "local")
+            ray_dashboard = bool(OmegaConf.select(config, "ray.include_dashboard") or False)
+            _init_ray(address=ray_address, include_dashboard=ray_dashboard)
         ray.get(main_task.remote(config))
 
 
