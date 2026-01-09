@@ -1,0 +1,8 @@
+# @package _global_
+
+rgym_seq:
+  tasks:
+    - spell_backward
+    - chain_sum
+    - gcd
+    - base_conversion

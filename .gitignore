@@ -1,0 +1,48 @@
+.cache/
+**/.cache/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual/Conda environments
+.venv/
+venv/
+env/
+
+# Experiment artifacts
+outputs/
+**/outputs/
+wandb/
+**/wandb/
+logs/
+**/logs/
+ckpts/
+**/ckpts/
+checkpoints/
+**/checkpoints/
+ray_results/
+**/ray_results/
+.hydra/
+**/.hydra/
+multirun/
+**/multirun/
+*.log
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.whl
+
+# Local files
+.DS_Store
+reassoninggym.pdf
+.vscode/
+.idea/
+
+# External deps (cloned separately)
+external/

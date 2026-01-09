@@ -1,0 +1,14 @@
+# @package _global_
+
+reasoning_gym:
+  developer_prompt: DeepSeekZero
+
+  datasets:
+    chain_sum:
+      weight: 1
+      config:
+        min_terms: 2
+        max_terms: 5
+        min_digits: 1
+        max_digits: 2
+        allow_negation: false
