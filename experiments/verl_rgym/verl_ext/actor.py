@@ -3,7 +3,6 @@ from typing import Any, Optional
 import torch
 from verl import DataProto
 from verl.trainer.ppo.core_algos import agg_loss, get_policy_loss_fn, kl_penalty
-from verl.utils.device import get_device_id
 from verl.utils.py_functional import append_to_dict
 from verl.utils.seqlen_balancing import prepare_dynamic_batch
 from verl.workers.actor.dp_actor import DataParallelPPOActor
@@ -24,6 +23,9 @@ class SphereDataParallelPPOActor(DataParallelPPOActor):
 
     def update_policy(self, data: DataProto):
         self.actor_module.train()
+
+        actor_param = next(self.actor_module.parameters())
+        actor_device = actor_param.device
 
         temperature = data.meta_info["temperature"]
         pad_token_id = data.meta_info.get("pad_token_id", 0)
@@ -79,7 +81,7 @@ class SphereDataParallelPPOActor(DataParallelPPOActor):
                 self.actor_optimizer.zero_grad()
 
                 for micro_batch in micro_batches:
-                    micro_batch = micro_batch.to(get_device_id())
+                    micro_batch = micro_batch.to(actor_device)
                     micro_batch_metrics = {}
                     model_inputs = {**micro_batch.batch, **micro_batch.non_tensor_batch, "pad_token_id": pad_token_id}
                     response_mask = model_inputs["response_mask"]

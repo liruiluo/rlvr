@@ -15,6 +15,12 @@ bash scripts/rgym/rl/moe_lora/reasoning_gym_grpo_chain_sum_single_gpu_moe_lora_s
 
 Token-level MoE-LoRA + SPHERE requires HF rollout (we keep `external/verl` unmodified).
 
+Single Ascend NPU (910/910B):
+
+```bash
+bash scripts/rgym/rl/moe_lora/reasoning_gym_grpo_chain_sum_single_npu_moe_lora_sphere_hf.sh
+```
+
 Plain LoRA (no MoE, no SPHERE):
 
 ```bash
@@ -36,6 +42,12 @@ bash scripts/rgym/crl/moe_lora/reasoning_gym_continual_single_gpu_moe_lora_spher
 Task-specific dataset settings live in `experiments/verl_rgym/configs/task/` (used by continual runs to swap datasets per phase).
 Task order lives in `experiments/verl_rgym/configs/seq/` (selected via `crl.seq=<name>`), or override with `crl.tasks=[a,b,c]`.
 
+Single NPU:
+
+```bash
+bash scripts/rgym/crl/moe_lora/reasoning_gym_continual_single_npu_moe_lora_sphere_hf.sh crl.seq=default
+```
+
 Plain LoRA (no MoE, no SPHERE):
 
 ```bash
@@ -56,6 +68,10 @@ bash scripts/rgym/rl/moe_lora/reasoning_gym_grpo_chain_sum_single_gpu_moe_lora_s
 
 Models/datasets are cached under `./.cache/` by default via `scripts/common/setup_env.sh` (override with `RLVR_CACHE_ROOT=/path`).
 
+## Timing
+
+Wall-clock timings are appended to `checkpoints/<project>/<experiment>/timing.jsonl`.
+
 ## 4-GPU / cluster
 
 Single node with 4 GPUs:
@@ -67,5 +83,5 @@ bash scripts/rgym/rl/moe_lora/reasoning_gym_grpo_chain_sum_single_gpu_moe_lora_s
 Existing Ray cluster:
 
 ```bash
-bash scripts/rgym/cluster/rl/moe_lora/reasoning_gym_grpo_chain_sum_moe_lora_sphere_hf.sh ray.address=auto trainer.n_gpus_per_node=4
+bash scripts/rgym/cluster/rl/moe_lora/reasoning_gym_grpo_chain_sum_moe_lora_sphere_hf_npu.sh
 ```

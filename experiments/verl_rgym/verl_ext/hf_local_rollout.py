@@ -7,7 +7,6 @@ import torch
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
 from transformers import GenerationConfig
 
-from verl.utils.device import get_device_name
 from verl.utils.model import compute_position_id_with_mask
 from verl.workers.rollout.replica import TokenOutput
 
@@ -62,7 +61,7 @@ class HFLocalAsyncRollout:
             if isinstance(self.model, FSDP)
             else contextlib.nullcontext()
         )
-        with param_ctx, torch.no_grad(), torch.autocast(device_type=get_device_name(), dtype=autocast_dtype):
+        with param_ctx, torch.no_grad(), torch.autocast(device_type=device.type, dtype=autocast_dtype):
             seq = self.model.generate(
                 input_ids=input_ids,
                 attention_mask=attention_mask,

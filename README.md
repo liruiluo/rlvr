@@ -16,10 +16,22 @@ This repo is organized as a small experiment workspace around `verl` (external d
 bash scripts/rgym/rl/moe_lora/reasoning_gym_grpo_chain_sum_single_gpu_moe_lora_sphere_hf.sh
 ```
 
+Single Ascend NPU (910/910B):
+
+```bash
+bash scripts/rgym/rl/moe_lora/reasoning_gym_grpo_chain_sum_single_npu_moe_lora_sphere_hf.sh
+```
+
 Plain LoRA:
 
 ```bash
 bash scripts/rgym/rl/lora/reasoning_gym_grpo_chain_sum_single_gpu_lora_hf.sh
+```
+
+Plain LoRA on a single NPU:
+
+```bash
+bash scripts/rgym/rl/lora/reasoning_gym_grpo_chain_sum_single_npu_lora_hf.sh
 ```
 
 ## Continual learning (task-sequential)
@@ -37,11 +49,21 @@ Plain LoRA:
 bash scripts/rgym/crl/lora/reasoning_gym_continual_single_gpu_lora_hf.sh crl.seq=default
 ```
 
+Continual learning on a single NPU:
+
+```bash
+bash scripts/rgym/crl/moe_lora/reasoning_gym_continual_single_npu_moe_lora_sphere_hf.sh crl.seq=default
+```
+
 ## W&B logging
 
 ```bash
 bash scripts/rgym/rl/moe_lora/reasoning_gym_grpo_chain_sum_single_gpu_moe_lora_sphere_hf.sh trainer.logger=[console,wandb]
 ```
+
+## Timing
+
+Wall-clock timings are appended to `checkpoints/<project>/<experiment>/timing.jsonl`.
 
 ## 4-GPU / cluster
 
@@ -51,10 +73,10 @@ If you run on a single node with 4 GPUs (local Ray on that node):
 bash scripts/rgym/rl/moe_lora/reasoning_gym_grpo_chain_sum_single_gpu_moe_lora_sphere_hf.sh trainer.n_gpus_per_node=4
 ```
 
-If you run on an existing Ray cluster, use the cluster scripts and pass `ray.address=auto` (or a concrete address):
+If you run on an existing Ray cluster (example: 4 NPUs):
 
 ```bash
-bash scripts/rgym/cluster/rl/moe_lora/reasoning_gym_grpo_chain_sum_moe_lora_sphere_hf.sh ray.address=auto trainer.n_gpus_per_node=4
+bash scripts/rgym/cluster/rl/moe_lora/reasoning_gym_grpo_chain_sum_moe_lora_sphere_hf_npu.sh
 ```
 
 See `experiments/verl_rgym/README.md` for more runnable examples and curriculum scripts.

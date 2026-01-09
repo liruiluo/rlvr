@@ -4,6 +4,8 @@ import os
 import re
 import sys
 import json
+import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -33,6 +35,18 @@ def _json_default(obj):
     if hasattr(obj, "item"):
         return obj.item()
     return str(obj)
+
+
+def _append_jsonl(path: Path, obj: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(obj, ensure_ascii=False, default=_json_default) + "\n")
+
+
+def _now_ts() -> tuple[float, str]:
+    ts = time.time()
+    iso = datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
+    return ts, iso
 
 
 class ReasoningGymDataset(Dataset):
@@ -395,13 +409,44 @@ def main_task(config):
         val_dataset=val_dataset,
     )
     trainer.init_workers()
+
+    ckpt_root = _resolve_ckpt_root(config)
+    timing_path = ckpt_root / "timing.jsonl"
+    phase_task = OmegaConf.select(config, "crl.phase_task")
+    phase_index = OmegaConf.select(config, "crl.phase_index")
+
+    start_ts, start_iso = _now_ts()
+    fit_t0 = time.perf_counter()
+    _append_jsonl(
+        timing_path,
+        {
+            "event": "fit_start",
+            "ts": start_ts,
+            "iso_utc": start_iso,
+            "phase_task": str(phase_task) if phase_task is not None else None,
+            "phase_index": int(phase_index) if phase_index is not None else None,
+            "target_total_training_steps": int(OmegaConf.select(config, "trainer.total_training_steps") or -1),
+        },
+    )
     trainer.fit()
+    end_ts, end_iso = _now_ts()
+    _append_jsonl(
+        timing_path,
+        {
+            "event": "fit_end",
+            "ts": end_ts,
+            "iso_utc": end_iso,
+            "elapsed_sec": float(time.perf_counter() - fit_t0),
+            "global_step": int(trainer.global_steps),
+            "phase_task": str(phase_task) if phase_task is not None else None,
+            "phase_index": int(phase_index) if phase_index is not None else None,
+        },
+    )
 
     if bool(OmegaConf.select(config, "crl.enabled")) and bool(OmegaConf.select(config, "crl.eval_at_phase_end")):
         phase_task = str(OmegaConf.select(config, "crl.phase_task") or "unknown")
         print(f"[CRL] final eval task={phase_task} global_step={trainer.global_steps}")
 
-        ckpt_root = _resolve_ckpt_root(config)
         dump_samples = bool(OmegaConf.select(config, "crl.dump_eval_samples_at_phase_end"))
         original_val_dir = OmegaConf.select(config, "trainer.validation_data_dir")
         eval_dir = ckpt_root / "crl_eval" / phase_task / f"global_step_{trainer.global_steps}"
@@ -410,8 +455,21 @@ def main_task(config):
             with open_dict(config):
                 config.trainer.validation_data_dir = str(eval_dir / "generations")
 
+        eval_t0 = time.perf_counter()
         metrics = trainer._validate()
         print(f"[CRL] final eval metrics: {metrics}")
+        eval_end_ts, eval_end_iso = _now_ts()
+        _append_jsonl(
+            timing_path,
+            {
+                "event": "eval_end",
+                "ts": eval_end_ts,
+                "iso_utc": eval_end_iso,
+                "elapsed_sec": float(time.perf_counter() - eval_t0),
+                "global_step": int(trainer.global_steps),
+                "phase_task": phase_task,
+            },
+        )
 
         (eval_dir / "metrics.json").write_text(
             json.dumps(
@@ -429,7 +487,20 @@ def main_task(config):
 
     if bool(OmegaConf.select(config, "crl.enabled")) and bool(OmegaConf.select(config, "crl.save_ckpt_at_phase_end")):
         print(f"[CRL] saving checkpoint global_step={trainer.global_steps}")
+        ckpt_t0 = time.perf_counter()
         trainer._save_checkpoint()
+        ckpt_end_ts, ckpt_end_iso = _now_ts()
+        _append_jsonl(
+            timing_path,
+            {
+                "event": "ckpt_end",
+                "ts": ckpt_end_ts,
+                "iso_utc": ckpt_end_iso,
+                "elapsed_sec": float(time.perf_counter() - ckpt_t0),
+                "global_step": int(trainer.global_steps),
+                "phase_task": str(OmegaConf.select(config, "crl.phase_task") or "unknown"),
+            },
+        )
 
 
 def _init_ray(address: str, include_dashboard: bool) -> None:
