@@ -415,6 +415,52 @@ def main_task(config):
     phase_task = OmegaConf.select(config, "crl.phase_task")
     phase_index = OmegaConf.select(config, "crl.phase_index")
 
+    if bool(OmegaConf.select(config, "crl.enabled")) and bool(OmegaConf.select(config, "crl.eval_at_phase_start")):
+        trainer._load_checkpoint()
+        with open_dict(config):
+            config.trainer.resume_mode = "disable"
+            config.trainer.val_before_train = False
+
+        start_task = str(OmegaConf.select(config, "crl.phase_task") or "unknown")
+        start_step = int(trainer.global_steps)
+        start_eval_dir = ckpt_root / "crl_eval_start" / start_task / f"global_step_{start_step}"
+        start_eval_dir.mkdir(parents=True, exist_ok=True)
+
+        start_dump_samples = bool(OmegaConf.select(config, "crl.dump_eval_samples_at_phase_start"))
+        original_val_dir = OmegaConf.select(config, "trainer.validation_data_dir")
+        if start_dump_samples:
+            with open_dict(config):
+                config.trainer.validation_data_dir = str(start_eval_dir / "generations")
+
+        eval_t0 = time.perf_counter()
+        metrics = trainer._validate()
+        eval_end_ts, eval_end_iso = _now_ts()
+        (start_eval_dir / "metrics.json").write_text(
+            json.dumps(
+                {"task": start_task, "global_step": start_step, "when": "start", "metrics": metrics},
+                ensure_ascii=False,
+                indent=2,
+                default=_json_default,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        _append_jsonl(
+            timing_path,
+            {
+                "event": "eval_start_end",
+                "ts": eval_end_ts,
+                "iso_utc": eval_end_iso,
+                "elapsed_sec": float(time.perf_counter() - eval_t0),
+                "global_step": start_step,
+                "phase_task": start_task,
+                "phase_index": int(phase_index) if phase_index is not None else None,
+            },
+        )
+
+        with open_dict(config):
+            config.trainer.validation_data_dir = original_val_dir
+
     start_ts, start_iso = _now_ts()
     fit_t0 = time.perf_counter()
     _append_jsonl(

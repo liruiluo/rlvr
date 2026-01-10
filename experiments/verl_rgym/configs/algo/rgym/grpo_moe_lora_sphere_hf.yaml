@@ -54,8 +54,8 @@ data:
   prompt_key: prompt
   max_prompt_length: 256
   max_response_length: 128
-  train_batch_size: 16
-  val_batch_size: 16
+  train_batch_size: 32
+  val_batch_size: 64
   filter_overlong_prompts: false
   truncation: error
 
@@ -76,7 +76,7 @@ actor_rollout_ref:
   actor:
     strategy: fsdp
     ppo_mini_batch_size: 16
-    ppo_micro_batch_size_per_gpu: 4
+    ppo_micro_batch_size_per_gpu: 8
     use_dynamic_bsz: False
     ppo_max_token_len_per_gpu: 8192
     use_torch_compile: False
@@ -103,8 +103,8 @@ actor_rollout_ref:
     top_k: 0
     top_p: 0.95
     do_sample: True
-    n: 4
-    log_prob_micro_batch_size_per_gpu: 4
+    n: 8
+    log_prob_micro_batch_size_per_gpu: 8
     agent:
       num_workers: 1
     custom:
@@ -156,6 +156,8 @@ crl:
   tasks: []
   steps_per_phase: 16
   replay_weight: 0.0
+  eval_at_phase_start: true
+  dump_eval_samples_at_phase_start: false
   save_ckpt_at_phase_end: true
   eval_at_phase_end: true
   dump_eval_samples_at_phase_end: true

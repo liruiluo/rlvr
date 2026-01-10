@@ -40,6 +40,7 @@ multirun/
 
 # Local files
 .DS_Store
+nohup.out
 reassoninggym.pdf
 .vscode/
 .idea/

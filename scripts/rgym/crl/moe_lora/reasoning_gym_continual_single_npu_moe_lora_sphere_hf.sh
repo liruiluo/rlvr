@@ -21,13 +21,9 @@ echo "Log: ${RLVR_REPO_ROOT}/experiments/verl_rgym/${LOG_PATH}"
   crl.enabled=true \
   trainer.experiment_name=continual_single_npu_moe_lora_sphere_hf \
   reasoning_gym.dataset_size=256 \
-  data.train_batch_size=16 \
-  data.val_batch_size=16 \
-  actor_rollout_ref.rollout.n=2 \
   actor_rollout_ref.rollout.max_model_len=384 \
   data.max_response_length=64 \
   trainer.test_freq=8 \
   trainer.save_freq=8 \
   "$@" \
   2>&1 | tee "${LOG_PATH}"
-
