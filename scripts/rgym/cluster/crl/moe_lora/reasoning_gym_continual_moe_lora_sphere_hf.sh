@@ -20,6 +20,8 @@ echo "Log: ${RLVR_REPO_ROOT}/experiments/verl_rgym/${LOG_PATH}"
 "${RLVR_PYTHON}" grpo_train_local.py \
   --config-path configs \
   --config-name algo/rgym/grpo_moe_lora_sphere_hf \
+  -m seed=0,1,2 \
   crl.enabled=true \
+  'trainer.experiment_name=continual_cluster_moe_lora_sphere_hf_seed${seed}' \
   "$@" \
   2>&1 | tee "${LOG_PATH}"

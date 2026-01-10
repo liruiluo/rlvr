@@ -18,8 +18,9 @@ echo "Log: ${RLVR_REPO_ROOT}/experiments/verl_rgym/${LOG_PATH}"
 "${RLVR_PYTHON}" grpo_train_local.py \
   --config-path configs \
   --config-name algo/rgym/grpo_moe_lora_sphere_hf_npu \
+  -m seed=0,1,2 \
   crl.enabled=true \
-  trainer.experiment_name=continual_single_npu_moe_lora_sphere_hf \
+  'trainer.experiment_name=continual_single_npu_moe_lora_sphere_hf_seed${seed}' \
   reasoning_gym.dataset_size=256 \
   actor_rollout_ref.rollout.max_model_len=384 \
   data.max_response_length=64 \

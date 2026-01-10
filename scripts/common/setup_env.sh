@@ -4,8 +4,8 @@ set -euo pipefail
 # This script bootstraps the repo-local Python environment (a self-contained conda env under `env/`).
 # It is meant to be sourced by other run scripts so users don't need to manually activate anything.
 
-_SETUP_ENV_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-RLVR_REPO_ROOT="$(cd -- "${_SETUP_ENV_DIR}/../.." && pwd)"
+SETUP_ENV_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+RLVR_REPO_ROOT="$(cd -- "${SETUP_ENV_DIR}/../.." && pwd)"
 export RLVR_REPO_ROOT
 
 RLVR_PYTHON="${RLVR_REPO_ROOT}/env/bin/python"

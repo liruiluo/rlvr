@@ -19,7 +19,7 @@ from verl_ext.moe_lora import (
 class SphereDataParallelPPOActor(DataParallelPPOActor):
     def __init__(self, *args, verl_ext_config: Optional[dict[str, Any]] = None, **kwargs):
         super().__init__(*args, **kwargs)
-        self._verl_ext_config = verl_ext_config or {}
+        self.verl_ext_config = verl_ext_config or {}
 
     def update_policy(self, data: DataProto):
         self.actor_module.train()
@@ -30,10 +30,10 @@ class SphereDataParallelPPOActor(DataParallelPPOActor):
         temperature = data.meta_info["temperature"]
         pad_token_id = data.meta_info.get("pad_token_id", 0)
 
-        sphere_feature_ratio = float(self._verl_ext_config.get("sphere_feature_ratio", 0.0))
-        sphere_gating_ratio = float(self._verl_ext_config.get("sphere_gating_ratio", 0.0))
-        sphere_eps = float(self._verl_ext_config.get("sphere_eps", 1e-8))
-        sphere_mode = str(self._verl_ext_config.get("sphere_mode", "loss_ratio"))
+        sphere_feature_ratio = float(self.verl_ext_config.get("sphere_feature_ratio", 0.0))
+        sphere_gating_ratio = float(self.verl_ext_config.get("sphere_gating_ratio", 0.0))
+        sphere_eps = float(self.verl_ext_config.get("sphere_eps", 1e-8))
+        sphere_mode = str(self.verl_ext_config.get("sphere_mode", "loss_ratio"))
         sphere_enabled = (sphere_feature_ratio > 0.0) or (sphere_gating_ratio > 0.0)
 
         select_keys = [
@@ -69,11 +69,12 @@ class SphereDataParallelPPOActor(DataParallelPPOActor):
             "actor/pg_loss": 0.0,
             "actor/kl_loss": 0.0,
         }
-        for _ in range(self.config.ppo_epochs):
+        for ppo_epoch_index in range(self.config.ppo_epochs):
             for mini_batch in mini_batches:
                 if self.config.use_dynamic_bsz:
                     max_token_len = self.config.ppo_max_token_len_per_gpu * self.ulysses_sequence_parallel_size
-                    micro_batches, _ = prepare_dynamic_batch(mini_batch, max_token_len=max_token_len)
+                    dynamic_batch = prepare_dynamic_batch(mini_batch, max_token_len=max_token_len)
+                    micro_batches = dynamic_batch[0]
                 else:
                     self.gradient_accumulation = self.config.ppo_mini_batch_size // self.config.ppo_micro_batch_size_per_gpu
                     micro_batches = mini_batch.split(self.config.ppo_micro_batch_size_per_gpu)

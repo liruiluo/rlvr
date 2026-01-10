@@ -64,7 +64,7 @@ def pop_moe_lora_sphere_losses(model: nn.Module) -> tuple[list[torch.Tensor], li
     return feature_losses, gating_losses
 
 
-def _parseval_feature_loss_sphere(phi: torch.Tensor) -> torch.Tensor:
+def parseval_feature_loss_sphere(phi: torch.Tensor) -> torch.Tensor:
     phi = phi.float()
     tokens, dim = phi.shape
     t = phi.new_tensor(tokens)
@@ -82,7 +82,7 @@ def _parseval_feature_loss_sphere(phi: torch.Tensor) -> torch.Tensor:
     return fro2 - (tr * tr) / d
 
 
-def _parseval_output_loss(probs: torch.Tensor) -> torch.Tensor:
+def parseval_output_loss(probs: torch.Tensor) -> torch.Tensor:
     probs = probs.float()
     tokens, experts = probs.shape
     t = probs.new_tensor(tokens)
@@ -151,7 +151,6 @@ class MoELoRALinear(PeftLoraLinear):
         if self.moe is None:
             return super().forward(x, *args, **kwargs)
 
-        self._check_forward_args(x, *args, **kwargs)
         adapter_names = kwargs.pop("adapter_names", None)
         if adapter_names is not None:
             raise NotImplementedError("MoE-LoRA does not support PEFT mixed-batch forwarding.")
@@ -208,8 +207,8 @@ class MoELoRALinear(PeftLoraLinear):
                 self.sphere_gating_loss = gate_probs.new_tensor(0.0)
                 self.sphere_feature_loss = gate_probs.new_tensor(0.0)
             else:
-                self.sphere_gating_loss = _parseval_output_loss(probs_2d)
-                self.sphere_feature_loss = _parseval_feature_loss_sphere(phi_2d)
+                self.sphere_gating_loss = parseval_output_loss(probs_2d)
+                self.sphere_feature_loss = parseval_feature_loss_sphere(phi_2d)
 
         return result.to(result_dtype)
 
@@ -251,4 +250,3 @@ def convert_peft_lora_to_moe(
 
     print(f"[MoE-LoRA/PEFT] Converted {len(converted_modules)} LoRA Linear layers to `MoELoRALinear`.")
     return peft_model
-

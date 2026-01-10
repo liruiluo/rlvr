@@ -1,6 +1,7 @@
 # This example is an adapted version of Bytedance's code:
 # https://github.com/volcengine/verl/blob/a65c9157bc0b85b64cd753de19f94e80a11bd871/verl/trainer/main_ppo.py
 import os
+import random
 import re
 import sys
 import json
@@ -9,8 +10,25 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-_VE_RL_DIR = Path(__file__).resolve().parent
-sys.path.insert(0, str(_VE_RL_DIR))
+import numpy as np
+
+VE_RL_DIR = Path(__file__).resolve().parent
+REPO_ROOT = VE_RL_DIR.parents[1]
+VERL_ROOT = REPO_ROOT / "external" / "verl"
+
+# Keep the whole project runnable without manual env activation/export.
+os.environ.setdefault("VERL_REPO_ROOT", str(VERL_ROOT))
+os.environ.setdefault("HF_HOME", str(REPO_ROOT / ".cache" / "huggingface"))
+
+# Ray worker processes rely on `PYTHONPATH` (runtime_env) rather than this process's `sys.path`.
+py_path_parts = [str(VE_RL_DIR), str(VERL_ROOT)]
+existing_py_path = os.environ.get("PYTHONPATH", "")
+if existing_py_path:
+    py_path_parts.append(existing_py_path)
+os.environ["PYTHONPATH"] = ":".join(py_path_parts)
+
+sys.path.insert(0, str(VE_RL_DIR))
+sys.path.insert(0, str(VERL_ROOT))
 
 import hydra
 import ray
@@ -31,19 +49,27 @@ from reasoning_gym.dataset import ProceduralDataset
 from reasoning_gym.utils import extract_answer
 
 
-def _json_default(obj):
+def set_global_seed(seed: int) -> None:
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+
+def json_default(obj):
     if hasattr(obj, "item"):
         return obj.item()
     return str(obj)
 
 
-def _append_jsonl(path: Path, obj: dict) -> None:
+def append_jsonl(path: Path, obj: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as f:
-        f.write(json.dumps(obj, ensure_ascii=False, default=_json_default) + "\n")
+        f.write(json.dumps(obj, ensure_ascii=False, default=json_default) + "\n")
 
 
-def _now_ts() -> tuple[float, str]:
+def now_ts() -> tuple[float, str]:
     ts = time.time()
     iso = datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
     return ts, iso
@@ -138,6 +164,7 @@ def prepare_datasets(config, tokenizer) -> tuple[ReasoningGymDataset, ReasoningG
     dataset_size = config.reasoning_gym.dataset_size
     developer_prompt_setting = config.reasoning_gym.developer_prompt
     developer_prompt = rg_utils.SYSTEM_PROMPTS[developer_prompt_setting]
+    seed = int(OmegaConf.select(config, "seed") or 0)
     dataset_specs = []
     for name, ds in config.reasoning_gym.datasets.items():
         if ds.weight <= 0:
@@ -149,7 +176,10 @@ def prepare_datasets(config, tokenizer) -> tuple[ReasoningGymDataset, ReasoningG
                 config=OmegaConf.to_container(ds.config, resolve=True) if "config" in ds else {},
             )
         )
-    train_data_source = reasoning_gym.create_dataset("composite", seed=1, size=dataset_size, datasets=dataset_specs)
+    # Paper-style: keep evaluation sets identical across independent runs.
+    train_data_source = reasoning_gym.create_dataset(
+        "composite", seed=1 + seed, size=dataset_size, datasets=dataset_specs
+    )
     val_data_source = reasoning_gym.create_dataset("composite", seed=2, size=dataset_size, datasets=dataset_specs)
     train_dataset = make_dataset(
         tokenizer, train_data_source, developer_prompt, max_prompt_length=config.data.max_prompt_length
@@ -160,8 +190,8 @@ def prepare_datasets(config, tokenizer) -> tuple[ReasoningGymDataset, ReasoningG
     return train_dataset, val_dataset
 
 
-def _load_rgym_seq_tasks(seq_name: str) -> list[str]:
-    seq_path = _VE_RL_DIR / "configs" / "seq" / f"{seq_name}.yaml"
+def load_rgym_seq_tasks(seq_name: str) -> list[str]:
+    seq_path = VE_RL_DIR / "configs" / "seq" / f"{seq_name}.yaml"
     seq_cfg = OmegaConf.load(seq_path)
     tasks = list(seq_cfg.rgym_seq.tasks)
     if not tasks:
@@ -169,34 +199,57 @@ def _load_rgym_seq_tasks(seq_name: str) -> list[str]:
     return tasks
 
 
-def _load_rgym_task_override(task_name: str):
-    task_path = _VE_RL_DIR / "configs" / "task" / f"{task_name}.yaml"
+def load_rgym_task_override(task_name: str):
+    task_path = VE_RL_DIR / "configs" / "task" / f"{task_name}.yaml"
     if not task_path.exists():
         raise FileNotFoundError(f"Missing task config: {task_path}")
     return OmegaConf.load(task_path)
 
 
-def _resolve_ckpt_root(config) -> Path:
+def resolve_ckpt_root(config) -> Path:
     ckpt_root = Path(config.trainer.default_local_dir).expanduser()
     if not ckpt_root.is_absolute():
         ckpt_root = (Path.cwd() / ckpt_root).resolve()
     return ckpt_root
 
 
-def _read_latest_checkpointed_iteration(ckpt_root: Path) -> int:
+def read_latest_checkpointed_iteration(ckpt_root: Path) -> int:
     path = ckpt_root / "latest_checkpointed_iteration.txt"
     if not path.exists():
         return 0
     return int(path.read_text().strip())
 
 
-def _remove_latest_dataloader_state(ckpt_root: Path) -> None:
+def remove_latest_dataloader_state(ckpt_root: Path) -> None:
     candidates = sorted(ckpt_root.glob("global_step_*"), reverse=True)
     if not candidates:
         return
     data_pt = candidates[0] / "data.pt"
     if data_pt.exists():
         data_pt.unlink()
+
+
+def load_json(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def write_json(path: Path, obj: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(obj, ensure_ascii=False, indent=2, default=json_default) + "\n", encoding="utf-8")
+
+
+def load_checkpoint(trainer) -> None:
+    getattr(trainer, "_load_checkpoint")()
+
+
+def validate(trainer):
+    return getattr(trainer, "_validate")()
+
+
+def save_checkpoint(trainer) -> None:
+    getattr(trainer, "_save_checkpoint")()
 
 
 class RayPPOTrainerCustom(RayPPOTrainer):
@@ -217,7 +270,7 @@ class RayPPOTrainerCustom(RayPPOTrainer):
             dataset = self.train_dataset.data if num_examine == 0 else self.val_dataset.data
 
             def reward_fn(data: DataProto, return_dict: bool = False, **unused_kwargs):
-                tensor = self._score_output(data, dataset=dataset, num_examine=num_examine)
+                tensor = self.score_output(data, dataset=dataset, num_examine=num_examine)
                 if return_dict:
                     # wrap it so trainer can pull out extras
                     return {"reward_tensor": tensor, "reward_extra_info": {}}
@@ -241,7 +294,7 @@ class RayPPOTrainerCustom(RayPPOTrainer):
             train_sampler=None,
         )
 
-    def _score_output(self, data: DataProto, dataset: ProceduralDataset, num_examine: int = 0) -> torch.Tensor:
+    def score_output(self, data: DataProto, dataset: ProceduralDataset, num_examine: int = 0) -> torch.Tensor:
         reward_tensor = torch.zeros_like(data.batch["responses"], dtype=torch.float32)
 
         num_printed = 0
@@ -264,7 +317,7 @@ class RayPPOTrainerCustom(RayPPOTrainer):
             sequences_str = prompt_str + response_str
 
             index = data_item.non_tensor_batch["extra_info"]["index"]
-            score = self._compute_score(
+            score = self.compute_score(
                 solution_str=response_str,
                 dataset=dataset,
                 index=index,
@@ -278,7 +331,7 @@ class RayPPOTrainerCustom(RayPPOTrainer):
 
         return reward_tensor
 
-    def _compute_score(self, solution_str: str, dataset: ProceduralDataset, index: int) -> float:
+    def compute_score(self, solution_str: str, dataset: ProceduralDataset, index: int) -> float:
         found_answer = extract_answer(solution_str, tag_name="answer")
         if found_answer is None:
             matches = re.findall(r"[-+]?\d+(?:\.\d+)?", solution_str.replace(",", ""))
@@ -290,7 +343,7 @@ class RayPPOTrainerCustom(RayPPOTrainer):
         reward = dataset.score_answer(found_answer, entry=entry)
         return reward
 
-    def _create_dataloader(self, train_dataset, val_dataset, collate_fn=None, sampler=None):
+    def create_dataloader(self, train_dataset, val_dataset, collate_fn=None, sampler=None):
 
         if collate_fn is None:
             collate_fn = verl_collate_fn
@@ -332,6 +385,9 @@ class RayPPOTrainerCustom(RayPPOTrainer):
             self.config.critic.optim.total_training_steps = total_training_steps
 
 
+setattr(RayPPOTrainerCustom, "_create_dataloader", RayPPOTrainerCustom.create_dataloader)
+
+
 @ray.remote
 def main_task(config):
     # print initial config
@@ -343,6 +399,10 @@ def main_task(config):
 
     pprint(OmegaConf.to_container(config, resolve=True))  # resolve=True will eval symbol values
     OmegaConf.resolve(config)
+
+    seed = int(OmegaConf.select(config, "seed") or 0)
+    seed_offset = int(OmegaConf.select(config, "seed_offset") or 0)
+    set_global_seed(seed_offset + seed)
 
     # download the checkpoint from hdfs
     local_path = copy_local_path_from_hdfs(config.actor_rollout_ref.model.path)
@@ -409,20 +469,21 @@ def main_task(config):
         val_dataset=val_dataset,
     )
     trainer.init_workers()
+    trainer.global_steps = int(getattr(trainer, "global_steps", 0))
 
-    ckpt_root = _resolve_ckpt_root(config)
+    ckpt_root = resolve_ckpt_root(config)
     timing_path = ckpt_root / "timing.jsonl"
     phase_task = OmegaConf.select(config, "crl.phase_task")
     phase_index = OmegaConf.select(config, "crl.phase_index")
 
     if bool(OmegaConf.select(config, "crl.enabled")) and bool(OmegaConf.select(config, "crl.eval_at_phase_start")):
-        trainer._load_checkpoint()
+        load_checkpoint(trainer)
         with open_dict(config):
             config.trainer.resume_mode = "disable"
             config.trainer.val_before_train = False
 
         start_task = str(OmegaConf.select(config, "crl.phase_task") or "unknown")
-        start_step = int(trainer.global_steps)
+        start_step = int(getattr(trainer, "global_steps", 0))
         start_eval_dir = ckpt_root / "crl_eval_start" / start_task / f"global_step_{start_step}"
         start_eval_dir.mkdir(parents=True, exist_ok=True)
 
@@ -433,19 +494,19 @@ def main_task(config):
                 config.trainer.validation_data_dir = str(start_eval_dir / "generations")
 
         eval_t0 = time.perf_counter()
-        metrics = trainer._validate()
-        eval_end_ts, eval_end_iso = _now_ts()
+        metrics = validate(trainer)
+        eval_end_ts, eval_end_iso = now_ts()
         (start_eval_dir / "metrics.json").write_text(
             json.dumps(
                 {"task": start_task, "global_step": start_step, "when": "start", "metrics": metrics},
                 ensure_ascii=False,
                 indent=2,
-                default=_json_default,
+                default=json_default,
             )
             + "\n",
             encoding="utf-8",
         )
-        _append_jsonl(
+        append_jsonl(
             timing_path,
             {
                 "event": "eval_start_end",
@@ -461,9 +522,9 @@ def main_task(config):
         with open_dict(config):
             config.trainer.validation_data_dir = original_val_dir
 
-    start_ts, start_iso = _now_ts()
+    start_ts, start_iso = now_ts()
     fit_t0 = time.perf_counter()
-    _append_jsonl(
+    append_jsonl(
         timing_path,
         {
             "event": "fit_start",
@@ -475,8 +536,8 @@ def main_task(config):
         },
     )
     trainer.fit()
-    end_ts, end_iso = _now_ts()
-    _append_jsonl(
+    end_ts, end_iso = now_ts()
+    append_jsonl(
         timing_path,
         {
             "event": "fit_end",
@@ -502,10 +563,10 @@ def main_task(config):
                 config.trainer.validation_data_dir = str(eval_dir / "generations")
 
         eval_t0 = time.perf_counter()
-        metrics = trainer._validate()
+        metrics = validate(trainer)
         print(f"[CRL] final eval metrics: {metrics}")
-        eval_end_ts, eval_end_iso = _now_ts()
-        _append_jsonl(
+        eval_end_ts, eval_end_iso = now_ts()
+        append_jsonl(
             timing_path,
             {
                 "event": "eval_end",
@@ -522,7 +583,7 @@ def main_task(config):
                 {"task": phase_task, "global_step": int(trainer.global_steps), "metrics": metrics},
                 ensure_ascii=False,
                 indent=2,
-                default=_json_default,
+                default=json_default,
             )
             + "\n",
             encoding="utf-8",
@@ -534,9 +595,9 @@ def main_task(config):
     if bool(OmegaConf.select(config, "crl.enabled")) and bool(OmegaConf.select(config, "crl.save_ckpt_at_phase_end")):
         print(f"[CRL] saving checkpoint global_step={trainer.global_steps}")
         ckpt_t0 = time.perf_counter()
-        trainer._save_checkpoint()
-        ckpt_end_ts, ckpt_end_iso = _now_ts()
-        _append_jsonl(
+        save_checkpoint(trainer)
+        ckpt_end_ts, ckpt_end_iso = now_ts()
+        append_jsonl(
             timing_path,
             {
                 "event": "ckpt_end",
@@ -549,7 +610,7 @@ def main_task(config):
         )
 
 
-def _init_ray(address: str, include_dashboard: bool) -> None:
+def init_ray(address: str, include_dashboard: bool) -> None:
     ray.init(
         address=address,
         include_dashboard=include_dashboard,
@@ -568,37 +629,100 @@ def run_continual_learning(config) -> None:
     tasks = list(tasks)
     if not tasks:
         seq = str(OmegaConf.select(config, "crl.seq") or "safe")
-        tasks = _load_rgym_seq_tasks(seq)
+        tasks = load_rgym_seq_tasks(seq)
 
     steps_per_phase = int(OmegaConf.select(config, "crl.steps_per_phase") or 0)
     if steps_per_phase <= 0:
         raise ValueError("crl.steps_per_phase must be > 0")
 
     replay_weight = float(OmegaConf.select(config, "crl.replay_weight") or 0.0)
+    crl_save_freq = int(OmegaConf.select(config, "crl.save_freq") or -1)
     ray_address = str(OmegaConf.select(config, "ray.address") or "local")
     ray_dashboard = bool(OmegaConf.select(config, "ray.include_dashboard") or False)
 
+    ckpt_root = resolve_ckpt_root(config)
+    current_step = read_latest_checkpointed_iteration(ckpt_root)
+    state_path = ckpt_root / "crl_state.json"
+    state = load_json(state_path)
+    if state:
+        if state.get("tasks") != tasks:
+            raise ValueError(
+                f"CRL resume expects the same task list as {state_path}. "
+                f"Got tasks={tasks}, state.tasks={state.get('tasks')}. "
+                "Use a new trainer.experiment_name for a new schedule."
+            )
+        if int(state.get("steps_per_phase", -1)) != steps_per_phase:
+            raise ValueError(
+                f"CRL resume expects the same steps_per_phase as {state_path}. "
+                f"Got steps_per_phase={steps_per_phase}, state.steps_per_phase={state.get('steps_per_phase')}. "
+                "Use a new trainer.experiment_name for a new schedule."
+            )
+    else:
+        phases = []
+        if current_step > 0:
+            for idx, task in enumerate(tasks):
+                start_step = idx * steps_per_phase
+                end_step = (idx + 1) * steps_per_phase
+                phases.append({"index": idx, "task": task, "start_step": start_step, "end_step": end_step})
+        write_json(
+            state_path,
+            {
+                "tasks": tasks,
+                "steps_per_phase": steps_per_phase,
+                "phases": phases,
+            },
+        )
+        state = load_json(state_path)
+
     for idx, task in enumerate(tasks):
+        current_step = read_latest_checkpointed_iteration(ckpt_root)
+
+        phases = list(state.get("phases") or [])
+        phase = next((p for p in phases if int(p.get("index", -1)) == idx), None)
+        if phase is None:
+            phase = {
+                "index": idx,
+                "task": task,
+                "start_step": current_step,
+                "end_step": current_step + steps_per_phase,
+            }
+            phases.append(phase)
+            state["phases"] = phases
+            write_json(state_path, state)
+        else:
+            if str(phase.get("task")) != str(task):
+                raise ValueError(
+                    f"CRL resume mismatch at phase index {idx}: state has task={phase.get('task')} but got {task}. "
+                    "Use a new trainer.experiment_name for a new schedule."
+                )
+
+        target_total_steps = int(phase["end_step"])
+        if current_step >= target_total_steps:
+            print(
+                f"[CRL] phase={idx + 1}/{len(tasks)} task={task} already done "
+                f"(steps={current_step}>=end_step={target_total_steps}), skipping."
+            )
+            remove_latest_dataloader_state(ckpt_root)
+            continue
+
         if ray.is_initialized():
             ray.shutdown()
-        _init_ray(address=ray_address, include_dashboard=ray_dashboard)
+        init_ray(address=ray_address, include_dashboard=ray_dashboard)
 
         phase_cfg = OmegaConf.create(OmegaConf.to_container(config, resolve=False))
-        task_override = _load_rgym_task_override(task)
+        task_override = load_rgym_task_override(task)
         phase_cfg = OmegaConf.merge(phase_cfg, task_override)
         with open_dict(phase_cfg):
             phase_cfg.crl.phase_task = str(task)
             phase_cfg.crl.phase_index = int(idx)
-
-        ckpt_root = _resolve_ckpt_root(phase_cfg)
+            phase_cfg.trainer.resume_mode = "auto"
+            if crl_save_freq > 0:
+                phase_cfg.trainer.save_freq = int(crl_save_freq)
         if replay_weight > 0 and idx > 0:
             with open_dict(phase_cfg):
                 for prev_task in tasks[:idx]:
                     if prev_task in phase_cfg.reasoning_gym.datasets:
                         phase_cfg.reasoning_gym.datasets[prev_task].weight = replay_weight
-
-        current_step = _read_latest_checkpointed_iteration(ckpt_root)
-        target_total_steps = current_step + steps_per_phase
 
         with open_dict(phase_cfg):
             phase_cfg.trainer.total_epochs = 999999
@@ -609,7 +733,7 @@ def run_continual_learning(config) -> None:
             f"steps={current_step}->{target_total_steps} ckpt_root={ckpt_root}"
         )
         ray.get(main_task.remote(phase_cfg))
-        _remove_latest_dataloader_state(ckpt_root)
+        remove_latest_dataloader_state(ckpt_root)
     if ray.is_initialized():
         ray.shutdown()
 
@@ -622,8 +746,10 @@ def main(config):
         if not ray.is_initialized():
             ray_address = str(OmegaConf.select(config, "ray.address") or "local")
             ray_dashboard = bool(OmegaConf.select(config, "ray.include_dashboard") or False)
-            _init_ray(address=ray_address, include_dashboard=ray_dashboard)
+            init_ray(address=ray_address, include_dashboard=ray_dashboard)
         ray.get(main_task.remote(config))
+        if ray.is_initialized():
+            ray.shutdown()
 
 
 if __name__ == "__main__":

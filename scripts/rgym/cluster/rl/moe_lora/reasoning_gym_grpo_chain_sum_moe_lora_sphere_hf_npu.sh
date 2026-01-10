@@ -16,10 +16,10 @@ echo "Log: ${RLVR_REPO_ROOT}/experiments/verl_rgym/${LOG_PATH}"
 "${RLVR_PYTHON}" grpo_train_local.py \
   --config-path configs \
   --config-name algo/rgym/grpo_moe_lora_sphere_hf_npu \
+  -m seed=0,1,2 \
   /task=chain_sum \
   ray.address=auto \
-  trainer.experiment_name=chain_sum_cluster_npu_moe_lora_sphere_hf \
+  'trainer.experiment_name=chain_sum_cluster_npu_moe_lora_sphere_hf_seed${seed}' \
   trainer.n_gpus_per_node=4 \
   "$@" \
   2>&1 | tee "${LOG_PATH}"
-

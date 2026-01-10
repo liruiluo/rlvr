@@ -65,6 +65,12 @@ bash scripts/rgym/rl/moe_lora/reasoning_gym_grpo_chain_sum_single_gpu_moe_lora_s
 
 Wall-clock timings are appended to `checkpoints/<project>/<experiment>/timing.jsonl`.
 
+## Resume
+
+- Single-task: re-run the same script with the same `trainer.project_name` + `trainer.experiment_name` (default `trainer.resume_mode=auto`).
+- CRL: re-run with the same experiment name; phase boundaries are tracked in `checkpoints/<project>/<experiment>/crl_state.json`.
+  - To change task order or `crl.steps_per_phase`, use a new `trainer.experiment_name`.
+
 ## 4-GPU / cluster
 
 If you run on a single node with 4 GPUs (local Ray on that node):

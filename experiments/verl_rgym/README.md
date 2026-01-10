@@ -72,6 +72,12 @@ Models/datasets are cached under `./.cache/` by default via `scripts/common/setu
 
 Wall-clock timings are appended to `checkpoints/<project>/<experiment>/timing.jsonl`.
 
+## Resume
+
+- Single-task: re-run the same script with the same `trainer.project_name` + `trainer.experiment_name` (default `trainer.resume_mode=auto`).
+- CRL: re-run with the same experiment name; phase boundaries are tracked in `checkpoints/<project>/<experiment>/crl_state.json`.
+  - To change task order or `crl.steps_per_phase`, use a new `trainer.experiment_name`.
+
 ## 4-GPU / cluster
 
 Single node with 4 GPUs:

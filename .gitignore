@@ -21,6 +21,8 @@ wandb/
 **/wandb/
 logs/
 **/logs/
+reports/
+**/reports/
 ckpts/
 **/ckpts/
 checkpoints/
@@ -32,6 +34,9 @@ ray_results/
 multirun/
 **/multirun/
 *.log
+timing.jsonl
+crl_state.json
+latest_checkpointed_iteration.txt
 *.pt
 *.pth
 *.ckpt
