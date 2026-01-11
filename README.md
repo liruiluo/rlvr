@@ -13,6 +13,12 @@ This repo is organized as a small experiment workspace around `verl` (external d
 ## Quickstart
 
 ```bash
+bash scripts/run_1gpu.sh
+```
+
+Equivalent (more explicit):
+
+```bash
 bash scripts/rgym/rl/moe_lora/reasoning_gym_grpo_chain_sum_single_gpu_moe_lora_sphere_hf.sh
 ```
 
@@ -23,6 +29,12 @@ bash scripts/rgym/rl/moe_lora/reasoning_gym_grpo_chain_sum_single_npu_moe_lora_s
 ```
 
 Plain LoRA:
+
+```bash
+bash scripts/run_1gpu_lora.sh
+```
+
+Equivalent (more explicit):
 
 ```bash
 bash scripts/rgym/rl/lora/reasoning_gym_grpo_chain_sum_single_gpu_lora_hf.sh
@@ -76,7 +88,7 @@ Wall-clock timings are appended to `checkpoints/<project>/<experiment>/timing.js
 If you run on a single node with 4 GPUs (local Ray on that node):
 
 ```bash
-bash scripts/rgym/rl/moe_lora/reasoning_gym_grpo_chain_sum_single_gpu_moe_lora_sphere_hf.sh trainer.n_gpus_per_node=4
+bash scripts/run_4gpu.sh
 ```
 
 If you run on an existing Ray cluster (example: 4 NPUs):
