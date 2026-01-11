@@ -2,5 +2,5 @@
 
 reasoning_gym:
   datasets:
-    chain_sum:
+    basic_arithmetic:
       weight: 1

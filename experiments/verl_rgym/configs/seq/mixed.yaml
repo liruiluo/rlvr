@@ -2,7 +2,7 @@
 
 rgym_seq:
   tasks:
-    - basic_arithmetic
+    - spell_backward
     - chain_sum
     - gcd
-    - lcm
+    - base_conversion

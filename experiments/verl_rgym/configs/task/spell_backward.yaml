@@ -6,9 +6,6 @@ reasoning_gym:
   datasets:
     spell_backward:
       weight: 1
-      config:
-        min_word_len: 3
-        max_word_len: 8
 
 data:
   max_response_length: 32

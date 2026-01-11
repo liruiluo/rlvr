@@ -710,6 +710,9 @@ def run_continual_learning(config) -> None:
         init_ray(address=ray_address, include_dashboard=ray_dashboard)
 
         phase_cfg = OmegaConf.create(OmegaConf.to_container(config, resolve=False))
+        with open_dict(phase_cfg):
+            for ds_name in phase_cfg.reasoning_gym.datasets.keys():
+                phase_cfg.reasoning_gym.datasets[ds_name].weight = 0
         task_override = load_rgym_task_override(task)
         phase_cfg = OmegaConf.merge(phase_cfg, task_override)
         with open_dict(phase_cfg):

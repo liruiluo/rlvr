@@ -11,6 +11,19 @@ reasoning_gym:
   # Keep task specs here so CRL replay-weighting can reference previous tasks
   # without having to load per-task configs.
   datasets:
+    basic_arithmetic:
+      weight: 0
+      config:
+        min_terms: 2
+        max_terms: 4
+        min_digits: 1
+        max_digits: 1
+        operators: ["+"]
+        allow_parentheses: false
+        allow_negation: false
+        format_style: simple
+        whitespace: single
+
     chain_sum:
       weight: 0
       config:
@@ -26,15 +39,40 @@ reasoning_gym:
         min_base: 2
         max_base: 16
         min_value: 0
-        max_value: 1000
+        max_value: 255
 
     gcd:
       weight: 0
       config:
         min_numbers: 2
-        max_numbers: 3
+        max_numbers: 2
         min_value: 1
-        max_value: 10000
+        max_value: 1000
+
+    lcm:
+      weight: 0
+      config:
+        min_numbers: 2
+        max_numbers: 2
+        min_value: 1
+        max_value: 100
+
+    caesar_cipher:
+      weight: 0
+      config:
+        delimiter: "."
+        min_words: 3
+        max_words: 8
+        min_rotation: 1
+        max_rotation: 13
+
+    group_anagrams:
+      weight: 0
+      config:
+        min_anagram_groups: 2
+        max_anagram_groups: 4
+        min_words_per_group: 2
+        max_words_per_group: 3
 
     spell_backward:
       weight: 0
@@ -138,7 +176,8 @@ trainer:
   resume_mode: auto
   nnodes: 1
   n_gpus_per_node: 1
-  total_epochs: 3
+  total_epochs: 999999
+  total_training_steps: 500
   test_freq: 20
   save_freq: 100
   val_before_train: True
@@ -149,7 +188,7 @@ crl:
   enabled: false
   seq: safe
   tasks: []
-  steps_per_phase: 16
+  steps_per_phase: 500
   replay_weight: 0.0
   save_freq: 8
   eval_at_phase_start: true

@@ -19,7 +19,9 @@ echo "Log: ${RLVR_REPO_ROOT}/experiments/verl_rgym/${LOG_PATH}"
   --config-path configs \
   --config-name algo/rgym/grpo_moe_lora_sphere_hf \
   -m seed=0,1,2 \
+  task=none \
   crl.enabled=true \
+  crl.seq=default \
   'trainer.experiment_name=continual_single_gpu_moe_lora_sphere_hf_seed${seed}' \
   reasoning_gym.dataset_size=256 \
   actor_rollout_ref.rollout.max_model_len=384 \

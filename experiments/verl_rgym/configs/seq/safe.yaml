@@ -2,6 +2,6 @@
 
 rgym_seq:
   tasks:
-    - spell_backward
+    - basic_arithmetic
     - chain_sum
     - gcd

@@ -64,7 +64,7 @@ def main() -> int:
     parser.add_argument("--config-name", default="algo/rgym/grpo_moe_lora_sphere_hf")
     parser.add_argument("--project-name", default="rgym_convergence")
     parser.add_argument("--tasks", nargs="+", default=["chain_sum", "gcd", "base_conversion", "spell_backward"])
-    parser.add_argument("--max-steps", type=int, default=200)
+    parser.add_argument("--max-steps", type=int, default=500)
     parser.add_argument("--chunk-steps", type=int, default=20)
     parser.add_argument("--threshold", type=float, default=0.9)
     parser.add_argument("--patience", type=int, default=3)

@@ -1,13 +1,6 @@
 # @package _global_
 
 reasoning_gym:
-  developer_prompt: DeepSeekZero
-
   datasets:
     gcd:
       weight: 1
-      config:
-        min_numbers: 2
-        max_numbers: 3
-        min_value: 1
-        max_value: 10000

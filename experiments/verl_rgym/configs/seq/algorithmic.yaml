@@ -1,0 +1,8 @@
+# @package _global_
+
+rgym_seq:
+  tasks:
+    - spell_backward
+    - caesar_cipher
+    - base_conversion
+    - group_anagrams

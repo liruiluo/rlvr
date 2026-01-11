@@ -26,5 +26,6 @@ echo "Log: ${RLVR_REPO_ROOT}/experiments/verl_rgym/${LOG_PATH}"
   data.max_response_length=64 \
   trainer.test_freq=8 \
   trainer.save_freq=8 \
+  trainer.total_training_steps=500 \
   "$@" \
   2>&1 | tee "${LOG_PATH}"

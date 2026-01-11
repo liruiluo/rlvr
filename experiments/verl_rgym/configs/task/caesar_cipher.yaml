@@ -2,5 +2,5 @@
 
 reasoning_gym:
   datasets:
-    chain_sum:
+    caesar_cipher:
       weight: 1

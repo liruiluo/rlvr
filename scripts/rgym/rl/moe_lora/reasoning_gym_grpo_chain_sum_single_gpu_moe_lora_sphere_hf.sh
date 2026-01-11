@@ -20,7 +20,7 @@ echo "Log: ${RLVR_REPO_ROOT}/experiments/verl_rgym/${LOG_PATH}"
   --config-name algo/rgym/grpo_moe_lora_sphere_hf \
   -m seed=0,1,2 \
   reasoning_gym.dataset_size=256 \
-  trainer.total_epochs=1 \
+  trainer.total_training_steps=500 \
   trainer.test_freq=8 \
   "$@" \
   2>&1 | tee "${LOG_PATH}"
