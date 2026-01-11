@@ -9,6 +9,7 @@ source scripts/common/setup_env.sh
 cd "${RLVR_REPO_ROOT}/experiments/verl_rgym"
 
 ray stop -f
+export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
 
 mkdir -p logs
 DATE_TIME="$(date +%Y%m%d_%H%M%S)"
@@ -17,7 +18,7 @@ echo "Log: ${RLVR_REPO_ROOT}/experiments/verl_rgym/${LOG_PATH}"
 
 "${RLVR_PYTHON}" grpo_train_local.py \
   --config-path configs \
-  --config-name algo/rgym/grpo_moe_lora_sphere_hf \
+  --config-name algo/rgym/grpo_moe_lora_sphere_hf_single_gpu_perf \
   -m seed=0,1,2 \
   reasoning_gym.dataset_size=256 \
   trainer.total_training_steps=500 \

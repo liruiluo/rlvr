@@ -6,6 +6,7 @@ import re
 import sys
 import json
 import time
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -67,6 +68,27 @@ def append_jsonl(path: Path, obj: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as f:
         f.write(json.dumps(obj, ensure_ascii=False, default=json_default) + "\n")
+
+def _maybe_enable_wandb_resume(*, ckpt_root: Path, experiment_name: str) -> str | None:
+    """Make CRL phase-start eval metrics land in the same W&B run as training.
+
+    veRL creates the W&B run inside `RayPPOTrainer.fit()`, but CRL phase-start eval happens
+    before `fit()`. We start+finish a W&B session here and have `fit()` resume the same run ID.
+    """
+    if not experiment_name:
+        return None
+
+    ckpt_root.mkdir(parents=True, exist_ok=True)
+    run_id_path = ckpt_root / "wandb_run_id.txt"
+    if run_id_path.exists():
+        run_id = run_id_path.read_text(encoding="utf-8").strip()
+    else:
+        run_id = uuid.uuid4().hex[:8]
+        run_id_path.write_text(run_id + "\n", encoding="utf-8")
+
+    os.environ.setdefault("WANDB_RUN_ID", run_id)
+    os.environ.setdefault("WANDB_RESUME", "allow")
+    return run_id
 
 
 def now_ts() -> tuple[float, str]:
@@ -479,7 +501,10 @@ def main_task(config):
     if bool(OmegaConf.select(config, "crl.enabled")) and bool(OmegaConf.select(config, "crl.eval_at_phase_start")):
         load_checkpoint(trainer)
         with open_dict(config):
-            config.trainer.resume_mode = "disable"
+            # Keep `resume_mode` enabled: `RayPPOTrainer.fit()` resets `global_steps` to 0 and
+            # relies on `_load_checkpoint()` to restore the correct step counter. Disabling resume
+            # here would cause training to restart from step 0 and potentially overwrite existing
+            # `global_step_*` checkpoints.
             config.trainer.val_before_train = False
 
         start_task = str(OmegaConf.select(config, "crl.phase_task") or "unknown")
@@ -518,6 +543,21 @@ def main_task(config):
                 "phase_index": int(phase_index) if phase_index is not None else None,
             },
         )
+
+        # Also log phase-start eval metrics to W&B so they show up in the same run as training.
+        if "wandb" in list(config.trainer.logger or []):
+            from verl.utils.tracking import Tracking
+
+            _maybe_enable_wandb_resume(ckpt_root=ckpt_root, experiment_name=str(config.trainer.experiment_name))
+            eval_logger = Tracking(
+                project_name=config.trainer.project_name,
+                experiment_name=config.trainer.experiment_name,
+                default_backend=["wandb"],
+                config=OmegaConf.to_container(config, resolve=True),
+            )
+            eval_logger.log(data=metrics, step=start_step)
+            eval_logger.logger["wandb"].finish(exit_code=0)
+            del eval_logger
 
         with open_dict(config):
             config.trainer.validation_data_dir = original_val_dir

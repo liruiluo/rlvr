@@ -1,0 +1,18 @@
+# @package _global_
+
+# Single-GPU throughput-oriented defaults for `rollout.name=hf`.
+# These values are tuned to increase batching and GPU utilization without changing sample count.
+
+actor_rollout_ref:
+  actor:
+    ppo_micro_batch_size_per_gpu: 32
+
+  rollout:
+    log_prob_micro_batch_size_per_gpu: 32
+    agent:
+      num_workers: 8
+    custom:
+      verl_ext:
+        hf_max_batch_size: 128
+        hf_batch_wait_ms: 10.0
+

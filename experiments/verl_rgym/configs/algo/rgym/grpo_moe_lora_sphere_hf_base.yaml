@@ -151,6 +151,9 @@ actor_rollout_ref:
         sphere_eps: 1e-8
         sphere_mode: loss_ratio
         sphere_target: last
+        # HF-local rollout micro-batching (verl_ext/HFLocalAsyncRollout)
+        hf_max_batch_size: 8
+        hf_batch_wait_ms: 2.0
     val_kwargs:
       temperature: 0.0
       top_k: 0

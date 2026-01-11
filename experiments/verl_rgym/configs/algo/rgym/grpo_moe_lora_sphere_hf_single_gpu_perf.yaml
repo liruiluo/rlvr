@@ -1,0 +1,15 @@
+# @package _global_
+
+hydra:
+  job:
+    chdir: false
+  searchpath:
+    - file://${oc.env:VERL_REPO_ROOT}/verl/trainer/config
+
+defaults:
+  - /ppo_trainer
+  - /algo/rgym: grpo_moe_lora_sphere_hf_base
+  - /perf: single_gpu_hf
+  - _self_
+  - /task: chain_sum
+

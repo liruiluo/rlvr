@@ -61,7 +61,7 @@ def write_json(path: Path, obj) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run per-task convergence sweeps for ReasoningGym + veRL.")
-    parser.add_argument("--config-name", default="algo/rgym/grpo_moe_lora_sphere_hf")
+    parser.add_argument("--config-name", default="algo/rgym/grpo_moe_lora_sphere_hf_single_gpu_perf")
     parser.add_argument("--project-name", default="rgym_convergence")
     parser.add_argument("--tasks", nargs="+", default=["chain_sum", "gcd", "base_conversion", "spell_backward"])
     parser.add_argument("--max-steps", type=int, default=500)

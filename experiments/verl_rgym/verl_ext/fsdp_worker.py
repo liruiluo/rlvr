@@ -120,6 +120,8 @@ class ExtAsyncActorRolloutRefWorker(AsyncActorRolloutRefWorker):
 
     async def trainer_mode(self):
         if str(self.config.rollout.name) == "hf":
+            if getattr(self, "rollout", None) is not None and hasattr(self.rollout, "drain"):
+                await self.rollout.drain()
             self.actor_module_fsdp.train()
             if self._is_offload_param:
                 offload_fsdp_model_to_cpu(self.actor_module_fsdp)

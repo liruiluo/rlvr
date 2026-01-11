@@ -1,0 +1,36 @@
+# @package _global_
+
+hydra:
+  job:
+    chdir: false
+  searchpath:
+    - file://${oc.env:VERL_REPO_ROOT}/verl/trainer/config
+
+defaults:
+  - /ppo_trainer
+  - /algo/rgym: grpo_moe_lora_sphere_hf_base
+  - /perf: single_gpu_hf
+  - _self_
+  - /task: none
+
+trainer:
+  project_name: rgym_crl
+  experiment_name: continual_bg_default_seed${seed}_${now:%Y%m%d_%H%M%S}
+  logger: ["console", "wandb"]
+  test_freq: 8
+  save_freq: 8
+
+crl:
+  enabled: true
+  seq: default
+  steps_per_phase: 500
+
+reasoning_gym:
+  dataset_size: 256
+
+data:
+  max_response_length: 64
+
+actor_rollout_ref:
+  rollout:
+    max_model_len: 384
