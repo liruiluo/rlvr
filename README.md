@@ -7,76 +7,42 @@ This repo is organized as a small experiment workspace around `verl` (external d
 - Main experiment entrypoint: `experiments/verl_rgym/grpo_train_local.py`
 - Configs: `experiments/verl_rgym/configs/`
 - Non-invasive extensions (MoE-LoRA + SPHERE + local HF rollout): `experiments/verl_rgym/verl_ext/`
-- One-command run scripts (auto env + local cache): `scripts/`
+- One-command run scripts (auto env + local cache): `scripts/rgym/`
 - External dependencies: `external/` (e.g. `external/verl`)
 
 ## Quickstart
 
+Algorithms-domain, 5 tasks × 100 steps (CRL):
+
 ```bash
-bash scripts/run_1gpu.sh
+bash scripts/rgym/crl/moe_lora/reasoning_gym_continual_single_gpu_AlgorithmsDomain_100steps_moe_lora_sphere_hf.sh
 ```
 
-Equivalent (more explicit):
+Algorithms-domain, 5 tasks × 100 steps each (non-CRL: 5 independent runs):
 
 ```bash
-bash scripts/rgym/rl/moe_lora/reasoning_gym_grpo_chain_sum_single_gpu_moe_lora_sphere_hf.sh
+bash scripts/rgym/rl/moe_lora/reasoning_gym_grpo_AlgorithmsDomain_5tasks_100steps_each_single_gpu_moe_lora_sphere_hf.sh
 ```
 
-Single Ascend NPU (910/910B):
+Plain LoRA variants:
 
 ```bash
-bash scripts/rgym/rl/moe_lora/reasoning_gym_grpo_chain_sum_single_npu_moe_lora_sphere_hf.sh
-```
-
-Plain LoRA:
-
-```bash
-bash scripts/run_1gpu_lora.sh
-```
-
-Equivalent (more explicit):
-
-```bash
-bash scripts/rgym/rl/lora/reasoning_gym_grpo_chain_sum_single_gpu_lora_hf.sh
-```
-
-Plain LoRA on a single NPU:
-
-```bash
-bash scripts/rgym/rl/lora/reasoning_gym_grpo_chain_sum_single_npu_lora_hf.sh
+bash scripts/rgym/crl/lora/reasoning_gym_continual_single_gpu_AlgorithmsDomain_100steps_lora_hf.sh
+bash scripts/rgym/rl/lora/reasoning_gym_grpo_AlgorithmsDomain_5tasks_100steps_each_single_gpu_lora_hf.sh
 ```
 
 ## Continual learning (task-sequential)
 
 ```bash
-bash scripts/rgym/crl/moe_lora/reasoning_gym_continual_single_gpu_moe_lora_sphere_hf.sh crl.seq=default
+bash scripts/rgym/crl/moe_lora/reasoning_gym_continual_single_gpu_AlgorithmsDomain_100steps_moe_lora_sphere_hf.sh
 ```
 
-5 tasks × 100 steps (no args):
-
-```bash
-bash scripts/run_crl_1gpu_5tasks_100steps.sh
-```
-
-Task configs: `experiments/verl_rgym/configs/task/` (override via `task=<name>`).
-Task order: `experiments/verl_rgym/configs/seq/` (selected via `crl.seq=<name>`), or override with `crl.tasks=[a,b,c]`.
-
-Plain LoRA:
-
-```bash
-bash scripts/rgym/crl/lora/reasoning_gym_continual_single_gpu_lora_hf.sh crl.seq=default
-```
-
-Continual learning on a single NPU:
-
-```bash
-bash scripts/rgym/crl/moe_lora/reasoning_gym_continual_single_npu_moe_lora_sphere_hf.sh crl.seq=default
-```
+Task order is defined in `experiments/verl_rgym/configs/seq/AlgorithmsDomain.yaml`.
 
 ## W&B logging
 
 ```bash
-bash scripts/rgym/rl/moe_lora/reasoning_gym_grpo_chain_sum_single_gpu_moe_lora_sphere_hf.sh trainer.logger=[console,wandb]
+bash scripts/rgym/crl/moe_lora/reasoning_gym_continual_single_gpu_AlgorithmsDomain_100steps_moe_lora_sphere_hf.sh trainer.logger=[console,wandb]
 ```
 
 ## Timing
@@ -94,13 +60,7 @@ Wall-clock timings are appended to `checkpoints/<project>/<experiment>/timing.js
 If you run on a single node with 4 GPUs (local Ray on that node):
 
 ```bash
-bash scripts/run_4gpu.sh
-```
-
-If you run on an existing Ray cluster (example: 4 NPUs):
-
-```bash
-bash scripts/rgym/cluster/rl/moe_lora/reasoning_gym_grpo_chain_sum_moe_lora_sphere_hf_npu.sh
+bash scripts/rgym/crl/moe_lora/reasoning_gym_continual_4gpu_AlgorithmsDomain_100steps_moe_lora_sphere_hf.sh
 ```
 
 See `experiments/verl_rgym/README.md` for more runnable examples and curriculum scripts.

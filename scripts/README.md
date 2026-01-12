@@ -1,45 +1,34 @@
 # Scripts index
 
-This folder intentionally has **two layers**:
+This repo keeps only scripts that match these constraints:
 
-1) **One-command entrypoints** (recommended): `scripts/run_*.sh`  
-2) **Composable presets** under `scripts/rgym/**` (RL/CRL, GPU/NPU, local/cluster)
+- Strict single-domain curriculum: `crl.seq=AlgorithmsDomain` (see `experiments/verl_rgym/configs/seq/AlgorithmsDomain.yaml`)
+- 5 tasks
+- 100 steps per task
+- Runnable without passing any args (optional Hydra overrides still accepted)
 
-The “redundancy” you see is mostly thin wrapper scripts (especially `lora/`) that reuse the `moe_lora/` scripts and only override a few Hydra flags. This is on purpose so we don’t duplicate full training commands.
+## CRL (one run, task-sequential)
 
-## Start here (no args needed)
+**MoE-LoRA + SPHERE**
 
-**Default = MoE-LoRA + SPHERE (still LoRA training, just with extra extensions enabled)**
-
-- 1 GPU: `bash scripts/run_1gpu.sh`
-- 4 GPUs (single node): `bash scripts/run_4gpu.sh`
-
-**Plain LoRA = disables MoE-LoRA + SPHERE**
-
-- 1 GPU: `bash scripts/run_1gpu_lora.sh`
-- 4 GPUs (single node): `bash scripts/run_4gpu_lora.sh`
-
-All four accept optional Hydra overrides, but you can run them with zero parameters.
-
-## Continual learning presets (5 tasks × 100 steps)
-
-These run CRL with `crl.seq=AlgorithmsDomain` and `crl.steps_per_phase=100`.
-
-**Default = MoE-LoRA + SPHERE**
-
-- 1 GPU: `bash scripts/run_crl_1gpu_5tasks_100steps.sh`
-- 4 GPUs (single node): `bash scripts/run_crl_4gpu_5tasks_100steps.sh`
+- 1 GPU: `bash scripts/rgym/crl/moe_lora/reasoning_gym_continual_single_gpu_AlgorithmsDomain_100steps_moe_lora_sphere_hf.sh`
+- 4 GPUs: `bash scripts/rgym/crl/moe_lora/reasoning_gym_continual_4gpu_AlgorithmsDomain_100steps_moe_lora_sphere_hf.sh`
 
 **Plain LoRA**
 
-- 1 GPU: `bash scripts/run_crl_1gpu_5tasks_100steps_lora.sh`
-- 4 GPUs (single node): `bash scripts/run_crl_4gpu_5tasks_100steps_lora.sh`
+- 1 GPU: `bash scripts/rgym/crl/lora/reasoning_gym_continual_single_gpu_AlgorithmsDomain_100steps_lora_hf.sh`
+- 4 GPUs: `bash scripts/rgym/crl/lora/reasoning_gym_continual_4gpu_AlgorithmsDomain_100steps_lora_hf.sh`
 
-## How to read the tree
+## Non-CRL (five independent runs)
 
-- `scripts/common/setup_env.sh`: repo-local env bootstrap (used by all run scripts)
-- `scripts/rgym/rl/**`: single-task RL (GRPO)
-- `scripts/rgym/crl/**`: continual RL (task-sequential)
-- `scripts/rgym/**/moe_lora/**`: MoE-LoRA + SPHERE presets
-- `scripts/rgym/**/lora/**`: *wrappers* that turn off MoE-LoRA + SPHERE
-- `scripts/rgym/cluster/**`: connect to an existing Ray cluster (does not call `ray stop -f`)
+Each script runs 5 separate GRPO runs (one per task), each with `trainer.total_training_steps=100`.
+
+**MoE-LoRA + SPHERE**
+
+- 1 GPU: `bash scripts/rgym/rl/moe_lora/reasoning_gym_grpo_AlgorithmsDomain_5tasks_100steps_each_single_gpu_moe_lora_sphere_hf.sh`
+- 4 GPUs: `bash scripts/rgym/rl/moe_lora/reasoning_gym_grpo_AlgorithmsDomain_5tasks_100steps_each_4gpu_moe_lora_sphere_hf.sh`
+
+**Plain LoRA**
+
+- 1 GPU: `bash scripts/rgym/rl/lora/reasoning_gym_grpo_AlgorithmsDomain_5tasks_100steps_each_single_gpu_lora_hf.sh`
+- 4 GPUs: `bash scripts/rgym/rl/lora/reasoning_gym_grpo_AlgorithmsDomain_5tasks_100steps_each_4gpu_lora_hf.sh`

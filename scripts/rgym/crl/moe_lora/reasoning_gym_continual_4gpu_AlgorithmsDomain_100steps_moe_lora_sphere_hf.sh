@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Continual RL (task-sequential) on Reasoning Gym with verl (4 GPUs on a single node).
+# Preset: Algorithms domain (5 tasks) × 100 steps per task.
 # Usage:
-#   CUDA_VISIBLE_DEVICES=0,1,2,3 bash scripts/rgym/crl/moe_lora/reasoning_gym_continual_4gpu_moe_lora_sphere_hf.sh [Hydra overrides...]
+#   bash scripts/rgym/crl/moe_lora/reasoning_gym_continual_4gpu_AlgorithmsDomain_100steps_moe_lora_sphere_hf.sh
 set -euo pipefail
 
 source scripts/common/setup_env.sh
@@ -14,16 +15,17 @@ export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0,1,2,3}"
 
 mkdir -p logs
 DATE_TIME="$(date +%Y%m%d_%H%M%S)"
-LOG_PATH="logs/continual_4gpu_${DATE_TIME}.log"
+LOG_PATH="logs/continual_4gpu_algorithmsdomain_100steps_${DATE_TIME}.log"
 echo "Log: ${RLVR_REPO_ROOT}/experiments/verl_rgym/${LOG_PATH}"
 
 "${RLVR_PYTHON}" grpo_train_local.py \
   --config-path configs \
   --config-name algo/rgym/grpo_moe_lora_sphere_hf_crl_single_gpu_perf \
-  seed=0 \
+  -m seed=0,1,2 \
   trainer.nnodes=1 \
   trainer.n_gpus_per_node=4 \
-  trainer.experiment_name="continual_4gpu_moe_lora_sphere_hf_seed0" \
+  crl.seq=AlgorithmsDomain \
+  crl.steps_per_phase=100 \
+  'trainer.experiment_name=continual_4gpu_AlgorithmsDomain_100steps_moe_lora_sphere_hf_seed${seed}' \
   "$@" \
   2>&1 | tee "${LOG_PATH}"
-
