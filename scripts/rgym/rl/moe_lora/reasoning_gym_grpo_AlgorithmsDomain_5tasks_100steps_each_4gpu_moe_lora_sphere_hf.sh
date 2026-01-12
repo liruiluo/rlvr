@@ -13,6 +13,16 @@ cd "${RLVR_REPO_ROOT}/experiments/verl_rgym"
 export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0,1,2,3}"
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
 
+VISIBLE_GPUS="$("${RLVR_PYTHON}" - <<'PY'
+import torch
+print(torch.cuda.device_count())
+PY
+)"
+if [[ "${VISIBLE_GPUS}" -lt 4 ]]; then
+  echo "Expected >=4 visible CUDA GPUs but got ${VISIBLE_GPUS}. Set CUDA_VISIBLE_DEVICES to 4 GPUs." >&2
+  exit 1
+fi
+
 TASKS=(chain_sum gcd lcm base_conversion spell_backward)
 
 for task in "${TASKS[@]}"; do
