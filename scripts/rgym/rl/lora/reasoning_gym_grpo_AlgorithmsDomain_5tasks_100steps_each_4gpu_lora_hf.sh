@@ -37,7 +37,7 @@ for task in "${TASKS[@]}"; do
     --config-path configs \
     --config-name algo/rgym/grpo_moe_lora_sphere_hf \
     -m seed=0,1,2 \
-    "/task=${task}" \
+    "task=${task}" \
     reasoning_gym.dataset_size=256 \
     trainer.total_training_steps=100 \
     trainer.test_freq=20 \
@@ -45,7 +45,7 @@ for task in "${TASKS[@]}"; do
     actor_rollout_ref.rollout.custom.verl_ext.use_moe_lora=false \
     actor_rollout_ref.rollout.custom.verl_ext.sphere_feature_ratio=0.0 \
     actor_rollout_ref.rollout.custom.verl_ext.sphere_gating_ratio=0.0 \
-    "trainer.experiment_name=AlgorithmsDomain_rl_4gpu_${task}_100steps_lora_hf_seed\\${seed}" \
+    "trainer.experiment_name=AlgorithmsDomain_rl_4gpu_${task}_100steps_lora_hf_seed\${seed}" \
     "$@" \
     2>&1 | tee "${LOG_PATH}"
 done

@@ -37,12 +37,12 @@ for task in "${TASKS[@]}"; do
     --config-path configs \
     --config-name algo/rgym/grpo_moe_lora_sphere_hf \
     -m seed=0,1,2 \
-    "/task=${task}" \
+    "task=${task}" \
     reasoning_gym.dataset_size=256 \
     trainer.total_training_steps=100 \
     trainer.test_freq=20 \
     trainer.n_gpus_per_node=4 \
-    "trainer.experiment_name=AlgorithmsDomain_rl_4gpu_${task}_100steps_moe_lora_sphere_hf_seed\\${seed}" \
+    "trainer.experiment_name=AlgorithmsDomain_rl_4gpu_${task}_100steps_moe_lora_sphere_hf_seed\${seed}" \
     "$@" \
     2>&1 | tee "${LOG_PATH}"
 done
