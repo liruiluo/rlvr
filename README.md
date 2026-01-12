@@ -18,10 +18,22 @@ Algorithms-domain, 5 tasks × 100 steps (CRL):
 bash scripts/rgym/crl/moe_lora/reasoning_gym_continual_single_gpu_AlgorithmsDomain_100steps_moe_lora_sphere_hf.sh
 ```
 
+MoE-LoRA (no SPHERE), same schedule:
+
+```bash
+bash scripts/rgym/crl/moe_lora/reasoning_gym_continual_single_gpu_AlgorithmsDomain_100steps_moe_lora_no_sphere_hf.sh
+```
+
 Algorithms-domain, 5 tasks × 100 steps each (non-CRL: 5 independent runs):
 
 ```bash
 bash scripts/rgym/rl/moe_lora/reasoning_gym_grpo_AlgorithmsDomain_5tasks_100steps_each_single_gpu_moe_lora_sphere_hf.sh
+```
+
+MoE-LoRA (no SPHERE), same schedule:
+
+```bash
+bash scripts/rgym/rl/moe_lora/reasoning_gym_grpo_AlgorithmsDomain_5tasks_100steps_each_single_gpu_moe_lora_no_sphere_hf.sh
 ```
 
 Plain LoRA variants:

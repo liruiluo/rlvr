@@ -14,6 +14,11 @@ This repo keeps only scripts that match these constraints:
 - 1 GPU: `bash scripts/rgym/crl/moe_lora/reasoning_gym_continual_single_gpu_AlgorithmsDomain_100steps_moe_lora_sphere_hf.sh`
 - 4 GPUs: `bash scripts/rgym/crl/moe_lora/reasoning_gym_continual_4gpu_AlgorithmsDomain_100steps_moe_lora_sphere_hf.sh`
 
+**MoE-LoRA (no SPHERE)**
+
+- 1 GPU: `bash scripts/rgym/crl/moe_lora/reasoning_gym_continual_single_gpu_AlgorithmsDomain_100steps_moe_lora_no_sphere_hf.sh`
+- 4 GPUs: `bash scripts/rgym/crl/moe_lora/reasoning_gym_continual_4gpu_AlgorithmsDomain_100steps_moe_lora_no_sphere_hf.sh`
+
 **Plain LoRA**
 
 - 1 GPU: `bash scripts/rgym/crl/lora/reasoning_gym_continual_single_gpu_AlgorithmsDomain_100steps_lora_hf.sh`
@@ -27,6 +32,11 @@ Each script runs 5 separate GRPO runs (one per task), each with `trainer.total_t
 
 - 1 GPU: `bash scripts/rgym/rl/moe_lora/reasoning_gym_grpo_AlgorithmsDomain_5tasks_100steps_each_single_gpu_moe_lora_sphere_hf.sh`
 - 4 GPUs: `bash scripts/rgym/rl/moe_lora/reasoning_gym_grpo_AlgorithmsDomain_5tasks_100steps_each_4gpu_moe_lora_sphere_hf.sh`
+
+**MoE-LoRA (no SPHERE)**
+
+- 1 GPU: `bash scripts/rgym/rl/moe_lora/reasoning_gym_grpo_AlgorithmsDomain_5tasks_100steps_each_single_gpu_moe_lora_no_sphere_hf.sh`
+- 4 GPUs: `bash scripts/rgym/rl/moe_lora/reasoning_gym_grpo_AlgorithmsDomain_5tasks_100steps_each_4gpu_moe_lora_no_sphere_hf.sh`
 
 **Plain LoRA**
 
