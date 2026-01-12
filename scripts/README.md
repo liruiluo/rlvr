@@ -21,6 +21,20 @@ The “redundancy” you see is mostly thin wrapper scripts (especially `lora/`)
 
 All four accept optional Hydra overrides, but you can run them with zero parameters.
 
+## Continual learning presets (5 tasks × 100 steps)
+
+These run CRL with `crl.seq=default5` and `crl.steps_per_phase=100`.
+
+**Default = MoE-LoRA + SPHERE**
+
+- 1 GPU: `bash scripts/run_crl_1gpu_5tasks_100steps.sh`
+- 4 GPUs (single node): `bash scripts/run_crl_4gpu_5tasks_100steps.sh`
+
+**Plain LoRA**
+
+- 1 GPU: `bash scripts/run_crl_1gpu_5tasks_100steps_lora.sh`
+- 4 GPUs (single node): `bash scripts/run_crl_4gpu_5tasks_100steps_lora.sh`
+
 ## How to read the tree
 
 - `scripts/common/setup_env.sh`: repo-local env bootstrap (used by all run scripts)
@@ -29,4 +43,3 @@ All four accept optional Hydra overrides, but you can run them with zero paramet
 - `scripts/rgym/**/moe_lora/**`: MoE-LoRA + SPHERE presets
 - `scripts/rgym/**/lora/**`: *wrappers* that turn off MoE-LoRA + SPHERE
 - `scripts/rgym/cluster/**`: connect to an existing Ray cluster (does not call `ray stop -f`)
-

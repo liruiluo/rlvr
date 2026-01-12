@@ -52,6 +52,12 @@ bash scripts/rgym/rl/lora/reasoning_gym_grpo_chain_sum_single_npu_lora_hf.sh
 bash scripts/rgym/crl/moe_lora/reasoning_gym_continual_single_gpu_moe_lora_sphere_hf.sh crl.seq=default
 ```
 
+5 tasks × 100 steps (no args):
+
+```bash
+bash scripts/run_crl_1gpu_5tasks_100steps.sh
+```
+
 Task configs: `experiments/verl_rgym/configs/task/` (override via `task=<name>`).
 Task order: `experiments/verl_rgym/configs/seq/` (selected via `crl.seq=<name>`), or override with `crl.tasks=[a,b,c]`.
 

@@ -1,0 +1,11 @@
+# @package _global_
+
+# 5-task curriculum (strictly single-domain per ReasoningGym paper categories).
+# Domain/category: Algorithms.
+rgym_seq:
+  tasks:
+    - chain_sum
+    - gcd
+    - lcm
+    - base_conversion
+    - spell_backward
