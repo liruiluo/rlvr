@@ -98,3 +98,5 @@ bash scripts/rgym/cluster/rl/moe_lora/reasoning_gym_grpo_chain_sum_moe_lora_sphe
 ```
 
 See `experiments/verl_rgym/README.md` for more runnable examples and curriculum scripts.
+
+For a map of what each script is for, see `scripts/README.md`.
