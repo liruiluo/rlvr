@@ -54,7 +54,13 @@ Task order is defined in `experiments/verl_rgym/configs/seq/AlgorithmsDomain.yam
 ## W&B logging
 
 ```bash
-bash scripts/rgym/crl/moe_lora/reasoning_gym_continual_single_gpu_AlgorithmsDomain_100steps_moe_lora_sphere_hf.sh trainer.logger=[console,wandb]
+bash scripts/rgym/crl/moe_lora/reasoning_gym_continual_single_gpu_AlgorithmsDomain_100steps_moe_lora_sphere_hf.sh
+```
+
+To disable W&B:
+
+```bash
+bash scripts/rgym/crl/moe_lora/reasoning_gym_continual_single_gpu_AlgorithmsDomain_100steps_moe_lora_sphere_hf.sh trainer.logger=[console]
 ```
 
 ## Timing

@@ -7,6 +7,8 @@ This repo keeps only scripts that match these constraints:
 - 100 steps per task
 - Runnable without passing any args (optional Hydra overrides still accepted)
 
+W&B is enabled by default (disable with `trainer.logger=[console]`).
+
 ## CRL (one run, task-sequential)
 
 **MoE-LoRA + SPHERE**

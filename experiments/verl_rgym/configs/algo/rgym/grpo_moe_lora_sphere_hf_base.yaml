@@ -175,7 +175,7 @@ algorithm:
 
 trainer:
   project_name: rgym_verl
-  logger: ["console"]
+  logger: ["console", "wandb"]
   resume_mode: auto
   nnodes: 1
   n_gpus_per_node: 1
