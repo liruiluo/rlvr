@@ -7,8 +7,7 @@ set -euo pipefail
 export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0,1,2,3}"
 
 bash scripts/rgym/crl/lora/reasoning_gym_continual_4gpu_lora_hf.sh \
-  crl.seq=default5 \
+  crl.seq=AlgorithmsDomain \
   crl.steps_per_phase=100 \
   'trainer.experiment_name=continual_4gpu_5tasks_100steps_lora_hf_seed0' \
   "$@"
-

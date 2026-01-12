@@ -23,7 +23,7 @@ All four accept optional Hydra overrides, but you can run them with zero paramet
 
 ## Continual learning presets (5 tasks × 100 steps)
 
-These run CRL with `crl.seq=default5` and `crl.steps_per_phase=100`.
+These run CRL with `crl.seq=AlgorithmsDomain` and `crl.steps_per_phase=100`.
 
 **Default = MoE-LoRA + SPHERE**
 
