@@ -4,9 +4,8 @@
 # Domain/category: Algorithms.
 rgym_seq:
   tasks:
+    - basic_arithmetic
     - chain_sum
     - gcd
-    - lcm
-    - base_conversion
+    - letter_counting
     - spell_backward
-

@@ -23,7 +23,7 @@ if [[ "${VISIBLE_GPUS}" -lt 4 ]]; then
   exit 1
 fi
 
-TASKS=(chain_sum gcd lcm base_conversion spell_backward)
+TASKS=(basic_arithmetic chain_sum gcd letter_counting spell_backward)
 
 for task in "${TASKS[@]}"; do
   ray stop -f

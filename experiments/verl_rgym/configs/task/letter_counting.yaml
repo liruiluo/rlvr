@@ -1,0 +1,6 @@
+# @package _global_
+
+reasoning_gym:
+  datasets:
+    letter_counting:
+      weight: 1

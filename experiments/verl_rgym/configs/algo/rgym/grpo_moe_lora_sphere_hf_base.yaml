@@ -80,6 +80,12 @@ reasoning_gym:
         min_word_len: 3
         max_word_len: 8
 
+    letter_counting:
+      weight: 0
+      config:
+        min_words: 5
+        max_words: 12
+
 data:
   tokenizer: null
   train_files: null
