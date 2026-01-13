@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import inspect
+
 from typing import Any
 
 from omegaconf import OmegaConf
@@ -49,27 +51,31 @@ class ExtAsyncActorRolloutRefWorker(AsyncActorRolloutRefWorker):
                 fsdp_config = FSDPEngineConfig()
 
             with patch_verl_get_peft_model_for_moe_lora(verl_ext_cfg or {}):
+                build_kwargs: dict[str, Any] = {
+                    "model_path": local_path,
+                    "fsdp_config": fsdp_config,
+                    "optim_config": optim_config,
+                    "override_model_config": override_model_config,
+                    "use_remove_padding": use_remove_padding,
+                    "use_fused_kernels": use_fused_kernels,
+                    "enable_gradient_checkpointing": self.config.model.get("enable_gradient_checkpointing", False),
+                    "trust_remote_code": self.config.model.get("trust_remote_code", False),
+                    "use_liger": self.config.model.get("use_liger", False),
+                    "role": "actor",
+                    "enable_activation_offload": self.config.model.get("enable_activation_offload", False),
+                    "use_tiled_mlp": False,
+                    "tiled_mlp_shards": 4,
+                }
+                sig = inspect.signature(self._build_model_optimizer)
+                if "use_prefix_grouper" in sig.parameters:
+                    build_kwargs["use_prefix_grouper"] = self.config.actor.get("use_prefix_grouper", False)
+
                 (
                     self.actor_module_fsdp,
                     self.actor_optimizer,
                     self.actor_lr_scheduler,
                     self.actor_model_config,
-                ) = self._build_model_optimizer(
-                    model_path=local_path,
-                    fsdp_config=fsdp_config,
-                    optim_config=optim_config,
-                    override_model_config=override_model_config,
-                    use_remove_padding=use_remove_padding,
-                    use_fused_kernels=use_fused_kernels,
-                    enable_gradient_checkpointing=self.config.model.get("enable_gradient_checkpointing", False),
-                    trust_remote_code=self.config.model.get("trust_remote_code", False),
-                    use_liger=self.config.model.get("use_liger", False),
-                    role="actor",
-                    enable_activation_offload=self.config.model.get("enable_activation_offload", False),
-                    use_prefix_grouper=self.config.actor.get("use_prefix_grouper", False),
-                    use_tiled_mlp=False,
-                    tiled_mlp_shards=4,
-                )
+                ) = self._build_model_optimizer(**build_kwargs)
 
             if fsdp_version(self.actor_module_fsdp) == 1:
                 self.actor_module = self.actor_module_fsdp._fsdp_wrapped_module
