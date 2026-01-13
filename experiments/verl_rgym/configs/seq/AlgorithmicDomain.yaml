@@ -1,0 +1,9 @@
+# @package _global_
+
+# 3-task curriculum mirroring ReasoningGym's intra-domain Algorithmic config.
+rgym_seq:
+  tasks:
+    - spell_backward
+    - letter_jumble
+    - word_sorting
+

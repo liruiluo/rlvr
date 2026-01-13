@@ -9,7 +9,6 @@ hydra:
 defaults:
   - /ppo_trainer
   - /algo/rgym: grpo_moe_lora_sphere_hf_base
-  - /perf: single_gpu_hf
   - _self_
   - /task: none
 
@@ -22,14 +21,21 @@ trainer:
 crl:
   enabled: true
   seq: default
-  steps_per_phase: 500
+  steps_per_phase: 160
 
 reasoning_gym:
   dataset_size: 256
 
 actor_rollout_ref:
+  actor:
+    ppo_micro_batch_size_per_gpu: 4
   rollout:
     max_model_len: 384
+    log_prob_micro_batch_size_per_gpu: 4
+    custom:
+      verl_ext:
+        hf_max_batch_size: 4
+        hf_batch_wait_ms: 2.0
 
 data:
   max_response_length: 64
