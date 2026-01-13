@@ -35,7 +35,7 @@ for task in "${TASKS[@]}"; do
 
   "${RLVR_PYTHON}" grpo_train_local.py \
     --config-path configs \
-    --config-name algo/rgym/grpo_moe_lora_sphere_hf_single_gpu_perf \
+    --config-name algo/rgym/grpo_moe_lora_sphere_hf \
     -m seed=0,1,2 \
     "task=${task}" \
     reasoning_gym.dataset_size=256 \

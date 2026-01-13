@@ -70,7 +70,7 @@ def main() -> int:
     parser.add_argument("--patience", type=int, default=3)
     parser.add_argument("--plateau-eps", type=float, default=0.02)
 
-    parser.add_argument("--model", default="Qwen/Qwen2.5-0.5B-Instruct")
+    parser.add_argument("--model", default="Qwen/Qwen2.5-3B-Instruct")
     parser.add_argument("--dataset-size", type=int, default=256)
     parser.add_argument("--train-batch-size", type=int, default=16)
     parser.add_argument("--val-batch-size", type=int, default=32)
