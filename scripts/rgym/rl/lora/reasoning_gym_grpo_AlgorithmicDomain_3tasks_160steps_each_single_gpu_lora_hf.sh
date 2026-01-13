@@ -33,6 +33,12 @@ for task in "${TASKS[@]}"; do
   LOG_PATH="logs/rl_algorithmicdomain_${task}_160steps_lora_${DATE_TIME}.log"
   echo "Task=${task} Log: ${RLVR_REPO_ROOT}/experiments/verl_rgym/${LOG_PATH}"
 
+  EXTRA_OVERRIDES=()
+  if [[ "${task}" == "letter_jumble" ]]; then
+    # Upstream uses 512/1024 for this task; keep enough room so prompt/answer aren't truncated away.
+    EXTRA_OVERRIDES+=(data.max_prompt_length=512 data.max_response_length=1024 actor_rollout_ref.rollout.max_model_len=1536)
+  fi
+
   "${RLVR_PYTHON}" grpo_train_local.py \
     --config-path configs \
     --config-name algo/rgym/grpo_moe_lora_sphere_hf \
@@ -49,7 +55,7 @@ for task in "${TASKS[@]}"; do
     actor_rollout_ref.rollout.custom.verl_ext.sphere_feature_ratio=0.0 \
     actor_rollout_ref.rollout.custom.verl_ext.sphere_gating_ratio=0.0 \
     "trainer.experiment_name=AlgorithmicDomain_rl_${task}_160steps_lora_hf_seed\${seed}" \
+    "${EXTRA_OVERRIDES[@]}" \
     "$@" \
     2>&1 | tee "${LOG_PATH}"
 done
-

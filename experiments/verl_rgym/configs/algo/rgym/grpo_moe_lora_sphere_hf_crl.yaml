@@ -30,7 +30,7 @@ actor_rollout_ref:
   actor:
     ppo_micro_batch_size_per_gpu: 4
   rollout:
-    max_model_len: 384
+    max_model_len: 1536
     log_prob_micro_batch_size_per_gpu: 4
     custom:
       verl_ext:
@@ -38,5 +38,5 @@ actor_rollout_ref:
         hf_batch_wait_ms: 2.0
 
 data:
-  max_response_length: 64
-
+  max_prompt_length: 512
+  max_response_length: 1024
