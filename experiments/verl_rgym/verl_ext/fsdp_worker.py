@@ -163,12 +163,12 @@ class ExtAsyncActorRolloutRefWorker(AsyncActorRolloutRefWorker):
             return
         return await super().trainer_mode()
 
-    @register(dispatch_mode=Dispatch.ONE_TO_ALL)
+    @register(dispatch_mode=Dispatch.DIRECT_ROLLOUT_METHOD)
     async def wake_up(self):
         await self.rollout_mode()
         return True
 
-    @register(dispatch_mode=Dispatch.ONE_TO_ALL)
+    @register(dispatch_mode=Dispatch.DIRECT_ROLLOUT_METHOD)
     async def sleep(self):
         await self.trainer_mode()
         return True
