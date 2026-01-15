@@ -118,11 +118,20 @@ class HFLocalAsyncRollout:
 
     async def _run_batched_generate(self, key: tuple[Any, ...], reqs: list[_PendingRequest]) -> None:
         max_new_tokens, temperature, top_p, repetition_penalty, ignore_eos = key
+        gen_model = self.model
+        if isinstance(self.model, FSDP) and bool(getattr(self.model, "_rlvr_full_params_summoned", False)):
+            gen_model = self.model._fsdp_wrapped_module
         do_sample = temperature > 0.0
 
-        param = next(self.model.parameters())
-        device = param.device
+        param = next(gen_model.parameters())
         autocast_dtype = param.dtype
+        try:
+            if hasattr(torch, npu):
+                device = torch.device(npu, torch.npu.current_device())
+            else:
+                device = param.device
+        except Exception:
+            device = param.device
 
         pad_token_id = self.tokenizer.pad_token_id
         if pad_token_id is None:
@@ -155,17 +164,21 @@ class HFLocalAsyncRollout:
             )
             self._batch_log_once = True
 
-        self.model.eval()
-        param_ctx = (
-            FSDP.summon_full_params(self.model, writeback=False, recurse=False)
-            if isinstance(self.model, FSDP)
-            else contextlib.nullcontext()
-        )
+        gen_model.eval()
+        already_summoned = bool(getattr(self.model, "_rlvr_full_params_summoned", False))
+        if already_summoned:
+            param_ctx = contextlib.nullcontext()
+        else:
+            param_ctx = (
+                FSDP.summon_full_params(self.model, writeback=False, recurse=False)
+                if isinstance(self.model, FSDP)
+                else contextlib.nullcontext()
+            )
 
         self._active_batches += 1
         try:
-            with param_ctx, torch.inference_mode(), torch.autocast(device_type=device.type, dtype=autocast_dtype):
-                seq = self.model.generate(
+            with param_ctx, torch.no_grad(), torch.autocast(device_type=device.type, dtype=autocast_dtype):
+                seq = gen_model.generate(
                     input_ids=input_ids,
                     attention_mask=attention_mask,
                     position_ids=position_ids,

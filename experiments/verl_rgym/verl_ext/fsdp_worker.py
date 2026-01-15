@@ -115,11 +115,31 @@ class ExtAsyncActorRolloutRefWorker(AsyncActorRolloutRefWorker):
                 )
             else:
                 self._build_rollout(trust_remote_code=self.config.model.get("trust_remote_code", False))
-
     async def rollout_mode(self):
         if str(self.config.rollout.name) == "hf":
+            import contextlib
+
+            from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
+
             if self._is_offload_param:
                 load_fsdp_model_to_gpu(self.actor_module_fsdp)
+
+            # Enter a full-param context once per rollout phase so per-request generation
+            # avoids running distributed collectives (which can deadlock if only a subset
+            # of ranks receives requests).
+            if getattr(self, "_hf_full_param_ctx", None) is None:
+                if isinstance(self.actor_module_fsdp, FSDP):
+                    self._hf_full_param_ctx = FSDP.summon_full_params(
+                        self.actor_module_fsdp,
+                        writeback=False,
+                        recurse=False,
+                    )
+                else:
+                    self._hf_full_param_ctx = contextlib.nullcontext()
+
+                self._hf_full_param_ctx.__enter__()
+                setattr(self.actor_module_fsdp, "_rlvr_full_params_summoned", True)
+
             self.actor_module_fsdp.eval()
             return
         return await super().rollout_mode()
@@ -128,11 +148,30 @@ class ExtAsyncActorRolloutRefWorker(AsyncActorRolloutRefWorker):
         if str(self.config.rollout.name) == "hf":
             if getattr(self, "rollout", None) is not None and hasattr(self.rollout, "drain"):
                 await self.rollout.drain()
+
+            ctx = getattr(self, "_hf_full_param_ctx", None)
+            if ctx is not None:
+                try:
+                    ctx.__exit__(None, None, None)
+                finally:
+                    self._hf_full_param_ctx = None
+                    setattr(self.actor_module_fsdp, "_rlvr_full_params_summoned", False)
+
             self.actor_module_fsdp.train()
             if self._is_offload_param:
                 offload_fsdp_model_to_cpu(self.actor_module_fsdp)
             return
         return await super().trainer_mode()
+
+    @register(dispatch_mode=Dispatch.ONE_TO_ALL)
+    async def wake_up(self):
+        await self.rollout_mode()
+        return True
+
+    @register(dispatch_mode=Dispatch.ONE_TO_ALL)
+    async def sleep(self):
+        await self.trainer_mode()
+        return True
 
     @register(dispatch_mode=Dispatch.DIRECT_ROLLOUT_METHOD, blocking=False)
     async def generate(

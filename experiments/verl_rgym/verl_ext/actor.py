@@ -27,6 +27,8 @@ class SphereDataParallelPPOActor(DataParallelPPOActor):
         actor_param = next(self.actor_module.parameters())
         actor_device = actor_param.device
 
+        use_prefix_grouper = bool(getattr(self, "use_prefix_grouper", False))
+
         temperature = data.meta_info["temperature"]
         pad_token_id = data.meta_info.get("pad_token_id", 0)
 
@@ -45,7 +47,7 @@ class SphereDataParallelPPOActor(DataParallelPPOActor):
             "old_log_probs",
             "advantages",
         ]
-        if self.use_prefix_grouper and "prompts" in data.batch.keys():
+        if use_prefix_grouper and "prompts" in data.batch.keys():
             select_keys.append("prompts")
         if self.config.use_kl_loss:
             select_keys.append("ref_log_prob")
@@ -58,7 +60,7 @@ class SphereDataParallelPPOActor(DataParallelPPOActor):
         non_tensor_select_keys = []
         if has_multi_modal_inputs:
             non_tensor_select_keys.append("multi_modal_inputs")
-        if self.use_prefix_grouper and "uid" in data.non_tensor_batch.keys():
+        if use_prefix_grouper and "uid" in data.non_tensor_batch.keys():
             non_tensor_select_keys.append("uid")
 
         data = data.select(batch_keys=select_keys, non_tensor_batch_keys=non_tensor_select_keys)
@@ -120,8 +122,11 @@ class SphereDataParallelPPOActor(DataParallelPPOActor):
                     outputs = self._forward_micro_batch(
                         model_inputs, temperature=temperature, calculate_entropy=calculate_entropy
                     )
-                    log_prob = outputs["log_probs"]
-                    entropy = outputs["entropys"] if calculate_entropy else None
+                    if isinstance(outputs, tuple):
+                        entropy, log_prob = outputs
+                    else:
+                        log_prob = outputs["log_probs"]
+                        entropy = outputs["entropys"] if calculate_entropy else None
 
                     if hasattr(self.config, "use_rollout_log_probs") and self.config.use_rollout_log_probs:
                         old_log_prob = model_inputs["old_log_probs"]

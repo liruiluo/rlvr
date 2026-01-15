@@ -31,6 +31,7 @@ export VERL_REPO_ROOT="${VERL_REPO_ROOT:-/verl}"
 cd "${RLVR_REPO_ROOT}/experiments/verl_rgym"
 
 REQUIRED_NPUS=4
+export RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO="${RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO:-0}"
 if [[ -z "${ASCEND_VISIBLE_DEVICES:-}" ]] && command -v npu-smi >/dev/null 2>&1; then
   DETECTED_NPU_IDS="$(
     npu-smi info -l 2>/dev/null \
@@ -43,7 +44,14 @@ if [[ -z "${ASCEND_VISIBLE_DEVICES:-}" ]] && command -v npu-smi >/dev/null 2>&1;
     export ASCEND_VISIBLE_DEVICES="${DETECTED_NPU_IDS}"
   fi
 fi
+if [[ -z "${ASCEND_RT_VISIBLE_DEVICES:-}" ]] && [[ -n "${ASCEND_VISIBLE_DEVICES:-}" ]]; then
+  NPU_COUNT="$(awk -F',' '{print NF}' <<<"${ASCEND_VISIBLE_DEVICES}")"
+  if [[ "${NPU_COUNT}" -gt 0 ]]; then
+    export ASCEND_RT_VISIBLE_DEVICES="$(seq 0 $((NPU_COUNT - 1)) | paste -sd, -)"
+  fi
+fi
 echo "ASCEND_VISIBLE_DEVICES=${ASCEND_VISIBLE_DEVICES:-<unset>}"
+echo "ASCEND_RT_VISIBLE_DEVICES=${ASCEND_RT_VISIBLE_DEVICES:-<unset>}"
 
 VISIBLE_NPUS="$(${RLVR_PYTHON} - <<PY
 try:
